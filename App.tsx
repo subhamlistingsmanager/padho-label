@@ -8,9 +8,11 @@ import ScanScreen from './src/screens/ScanScreen';
 import ResultScreen from './src/screens/ResultScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import IngredientsSnap from './src/screens/IngredientsSnap';
 import { View, TouchableOpacity } from 'react-native';
 import { Settings, History } from 'lucide-react-native';
 import { RootStackParamList } from './src/types';
+import { Colors } from './src/theme';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -27,46 +29,27 @@ export default function App() {
                 onPress={() => navigation.navigate('History')}
                 style={{ marginRight: 15 }}
               >
-                <History color="#2d3436" size={24} />
+                <History color={Colors.textPrimary} size={24} />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
-                <Settings color="#2d3436" size={24} />
+                <Settings color={Colors.textPrimary} size={24} />
               </TouchableOpacity>
             </View>
           ),
-          headerStyle: {
-            backgroundColor: '#fff',
-          },
+          headerStyle: { backgroundColor: '#fff' },
           headerShadowVisible: false,
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
+          headerTitleStyle: { fontWeight: 'bold' },
         })}
       >
+        <Stack.Screen name="Home" component={HomeScanScreen} options={{ title: 'Padho Label' }} />
+        <Stack.Screen name="Scan" component={ScanScreen} options={{ title: 'Scan Barcode' }} />
+        <Stack.Screen name="Result" component={ResultScreen} options={{ title: 'Product Details' }} />
+        <Stack.Screen name="History" component={HistoryScreen} options={{ title: 'History' }} />
+        <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
         <Stack.Screen
-          name="Home"
-          component={HomeScanScreen}
-          options={{ title: 'Padho Label' }}
-        />
-        <Stack.Screen
-          name="Scan"
-          component={ScanScreen}
-          options={{ title: 'Scan Barcode' }}
-        />
-        <Stack.Screen
-          name="Result"
-          component={ResultScreen}
-          options={{ title: 'Product Details' }}
-        />
-        <Stack.Screen
-          name="History"
-          component={HistoryScreen}
-          options={{ title: 'History' }}
-        />
-        <Stack.Screen
-          name="Settings"
-          component={SettingsScreen}
-          options={{ title: 'Settings' }}
+          name="IngredientsSnap"
+          component={IngredientsSnap}
+          options={{ title: 'Snap Ingredients', headerTransparent: true, headerTintColor: '#fff' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

@@ -15,7 +15,8 @@
     "submit": {
         "production": {
             "android": {
-                "serviceAccountKeyPath": "./pc-api-key.json"
+                "serviceAccountKeyPath": "./pc-api-key.json",
+                "releaseStatus": "draft"
             }
         }
     }
