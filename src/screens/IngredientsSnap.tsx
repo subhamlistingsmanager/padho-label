@@ -1,19 +1,22 @@
 import React, { useRef, useState } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
-    ScrollView, Alert,
+    ScrollView,
 } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import {
+    Camera,
+    useCameraDevice,
+    useCameraPermission,
+} from 'react-native-vision-camera';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, NutritionData } from '../types';
 import { updateProductInHistory } from '../services/history';
 import { runOCROnImage, parseNutritionFromText, mergeNutrition } from '../services/ocrNutrition';
 import { calculateNutriScore } from '../services/ratingEngine';
-import { Camera, CheckCircle, XCircle, RefreshCw, Zap } from 'lucide-react-native';
+import { Camera as CameraIcon, CheckCircle, XCircle, RefreshCw, Zap } from 'lucide-react-native';
 import { Colors, Spacing, Radius, Shadow } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'IngredientsSnap'>;
-
 type Stage = 'camera' | 'processing' | 'review' | 'error';
 
 const FIELD_LABELS: Record<keyof NutritionData, string> = {
@@ -31,8 +34,10 @@ const FIELD_LABELS: Record<keyof NutritionData, string> = {
 
 export default function IngredientsSnap({ route, navigation }: Props) {
     const { product } = route.params;
-    const cameraRef = useRef<CameraView>(null);
-    const [permission, requestPermission] = useCameraPermissions();
+    const cameraRef = useRef<Camera>(null);
+    const { hasPermission, requestPermission } = useCameraPermission();
+    const device = useCameraDevice('back');
+
     const [stage, setStage] = useState<Stage>('camera');
     const [statusMsg, setStatusMsg] = useState('');
     const [imageUri, setImageUri] = useState<string | null>(null);
@@ -44,55 +49,51 @@ export default function IngredientsSnap({ route, navigation }: Props) {
         setStage('processing');
 
         try {
-            // 1. Take photo
             setStatusMsg('Capturing image…');
-            const photo = await cameraRef.current.takePictureAsync({
-                quality: 0.75,
-                base64: false,
+            // react-native-vision-camera V4 — takePhoto returns { path }
+            const photo = await cameraRef.current.takePhoto({
+                qualityPrioritization: 'balanced',
             });
-            if (!photo?.uri) throw new Error('No photo URI');
-            setImageUri(photo.uri);
+            // On Android the path is absolute; iOS may need 'file://' prefix
+            const uri = photo.path.startsWith('file://') ? photo.path : `file://${photo.path}`;
+            setImageUri(uri);
 
-            // 2. Try OCR via Open Food Facts API
             setStatusMsg('Reading label with OCR…');
             let ocrText: string | null = null;
             try {
-                ocrText = await runOCROnImage(photo.uri);
+                ocrText = await runOCROnImage(uri);
             } catch {
-                // OCR API failed — continue with pure local parse
+                /* OCR API unavailable — fall through to local parse */
             }
 
-            // 3. Always try local regex parse too (on any available text)
             setStatusMsg('Extracting nutrition values…');
             const ocrExtracted = ocrText ? parseNutritionFromText(ocrText) : {};
-
-            // 4. Merge with existing product nutrition
             const merged = mergeNutrition(product.nutrition, ocrExtracted);
 
             setExtractedNutrition(ocrExtracted);
             setMergedNutrition(merged);
 
-            // 5. Save image URI to history
             await updateProductInHistory(product.barcode, {
-                ingredientsImageUri: photo.uri,
+                ingredientsImageUri: uri,
                 nutrition: merged,
             });
 
             setStage('review');
         } catch (err: any) {
-            console.error('IngredientsSnap error:', err);
+            console.error('Capture error:', err);
             setStatusMsg(err?.message ?? 'Unknown error');
             setStage('error');
         }
     };
 
     const handleApply = () => {
-        const updatedProduct = {
-            ...product,
-            ingredientsImageUri: imageUri ?? undefined,
-            nutrition: mergedNutrition,
-        };
-        navigation.navigate('Result', { product: updatedProduct });
+        navigation.navigate('Result', {
+            product: {
+                ...product,
+                ingredientsImageUri: imageUri ?? undefined,
+                nutrition: mergedNutrition,
+            },
+        });
     };
 
     const handleRetry = () => {
@@ -100,36 +101,21 @@ export default function IngredientsSnap({ route, navigation }: Props) {
         setStatusMsg('');
         setExtractedNutrition({});
         setMergedNutrition(product.nutrition);
+        setImageUri(null);
     };
 
-    if (!permission) return <View style={styles.container} />;
-
-    if (!permission.granted) {
-        return (
-            <View style={styles.permContainer}>
-                <Text style={styles.permTitle}>Camera Access Needed</Text>
-                <Text style={styles.permDesc}>Grant camera access to photograph the ingredients label.</Text>
-                <TouchableOpacity style={styles.permButton} onPress={requestPermission}>
-                    <Text style={styles.permButtonText}>Grant Permission</Text>
-                </TouchableOpacity>
-            </View>
-        );
-    }
-
-    // ── PROCESSING STAGE ────────────────────────────────────────────────────
+    // ── PROCESSING ──────────────────────────────────────────────────────────
     if (stage === 'processing') {
         return (
-            <View style={[styles.container, styles.centered]}>
+            <View style={[styles.container, styles.centered, { backgroundColor: '#000' }]}>
                 <ActivityIndicator size="large" color={Colors.primary} />
                 <Text style={styles.processingText}>{statusMsg}</Text>
-                <Text style={styles.processingSubText}>
-                    Scanning for nutritional values…
-                </Text>
+                <Text style={styles.processingSubText}>Scanning for nutritional values…</Text>
             </View>
         );
     }
 
-    // ── ERROR STAGE ─────────────────────────────────────────────────────────
+    // ── ERROR ───────────────────────────────────────────────────────────────
     if (stage === 'error') {
         return (
             <View style={[styles.container, styles.centered, { backgroundColor: Colors.background }]}>
@@ -144,17 +130,17 @@ export default function IngredientsSnap({ route, navigation }: Props) {
         );
     }
 
-    // ── REVIEW STAGE ────────────────────────────────────────────────────────
+    // ── REVIEW ──────────────────────────────────────────────────────────────
     if (stage === 'review') {
         const newRating = calculateNutriScore(mergedNutrition);
         const prevRating = calculateNutriScore(product.nutrition);
         const foundCount = Object.keys(extractedNutrition).length;
 
         return (
-            <ScrollView style={[styles.container, { backgroundColor: Colors.background }]}
-                contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 100 }}>
-
-                {/* Result banner */}
+            <ScrollView
+                style={[styles.container, { backgroundColor: Colors.background }]}
+                contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 100 }}
+            >
                 <View style={styles.resultBanner}>
                     <Zap color={Colors.primary} size={22} />
                     <View style={{ flex: 1, marginLeft: Spacing.sm }}>
@@ -171,7 +157,6 @@ export default function IngredientsSnap({ route, navigation }: Props) {
                     </View>
                 </View>
 
-                {/* Grade comparison */}
                 {newRating.hasData && (
                     <View style={styles.gradeCompare}>
                         <View style={styles.gradeBox}>
@@ -179,9 +164,7 @@ export default function IngredientsSnap({ route, navigation }: Props) {
                             <View style={[styles.gradeBadge, {
                                 backgroundColor: prevRating.hasData ? prevRating.color : Colors.textMuted
                             }]}>
-                                <Text style={styles.gradeBadgeText}>
-                                    {prevRating.grade ?? '?'}
-                                </Text>
+                                <Text style={styles.gradeBadgeText}>{prevRating.grade ?? '?'}</Text>
                             </View>
                         </View>
                         <Text style={styles.gradeArrow}>→</Text>
@@ -194,15 +177,11 @@ export default function IngredientsSnap({ route, navigation }: Props) {
                     </View>
                 )}
 
-                {/* Extracted values */}
                 <View style={styles.card}>
                     <Text style={styles.cardTitle}>Extracted Values</Text>
                     {(Object.keys(FIELD_LABELS) as (keyof NutritionData)[]).map(key => {
-                        const extractedVal = extractedNutrition[key];
-                        const existingVal = product.nutrition[key];
+                        const isNew = extractedNutrition[key] != null && product.nutrition[key] == null;
                         const finalVal = mergedNutrition[key];
-                        const isNew = extractedVal != null && existingVal == null;
-                        const hasValue = finalVal != null;
                         return (
                             <View key={key} style={[styles.tableRow, isNew && styles.tableRowHighlight]}>
                                 <View style={styles.rowLeft}>
@@ -213,15 +192,14 @@ export default function IngredientsSnap({ route, navigation }: Props) {
                                         </View>
                                     )}
                                 </View>
-                                <Text style={[styles.rowValue, !hasValue && styles.rowValueMuted]}>
-                                    {hasValue ? String(finalVal) : '—'}
+                                <Text style={[styles.rowValue, finalVal == null && styles.rowValueMuted]}>
+                                    {finalVal != null ? String(finalVal) : '—'}
                                 </Text>
                             </View>
                         );
                     })}
                 </View>
 
-                {/* Buttons */}
                 <TouchableOpacity style={styles.applyButton} onPress={handleApply}>
                     <CheckCircle color="#fff" size={20} />
                     <Text style={styles.applyButtonText}>Apply & View Updated Results</Text>
@@ -234,25 +212,47 @@ export default function IngredientsSnap({ route, navigation }: Props) {
         );
     }
 
-    // ── CAMERA STAGE ────────────────────────────────────────────────────────
+    // ── PERMISSION ──────────────────────────────────────────────────────────
+    if (!hasPermission) {
+        return (
+            <View style={styles.permContainer}>
+                <Text style={styles.permTitle}>Camera Access Needed</Text>
+                <Text style={styles.permDesc}>Grant camera access to photograph the ingredients label.</Text>
+                <TouchableOpacity style={styles.permButton} onPress={requestPermission}>
+                    <Text style={styles.permButtonText}>Grant Permission</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    if (!device) {
+        return (
+            <View style={styles.permContainer}>
+                <Text style={styles.permTitle}>No Camera Found</Text>
+                <Text style={styles.permDesc}>Could not access a back-facing camera.</Text>
+            </View>
+        );
+    }
+
+    // ── CAMERA ──────────────────────────────────────────────────────────────
     return (
         <View style={styles.container}>
-            <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} />
+            <Camera
+                ref={cameraRef}
+                style={StyleSheet.absoluteFill}
+                device={device}
+                isActive={true}
+                photo={true}        // enable photo mode
+            />
 
             <View style={styles.topOverlay}>
-                <Text style={styles.instruction}>Point at the nutrition/ingredients label</Text>
-                <Text style={styles.instructionSub}>
-                    Make sure all text is clearly visible and in focus
-                </Text>
+                <Text style={styles.instruction}>Point at the nutrition / ingredients label</Text>
+                <Text style={styles.instructionSub}>Make sure all text is clearly visible and in focus</Text>
             </View>
 
             <View style={styles.bottomBar}>
-                <TouchableOpacity
-                    style={styles.captureButton}
-                    onPress={handleCapture}
-                    activeOpacity={0.8}
-                >
-                    <Camera color="#fff" size={32} />
+                <TouchableOpacity style={styles.captureButton} onPress={handleCapture} activeOpacity={0.8}>
+                    <CameraIcon color="#fff" size={32} />
                 </TouchableOpacity>
                 <Text style={styles.captureLabel}>Capture & Analyse</Text>
             </View>
@@ -272,35 +272,21 @@ const styles = StyleSheet.create({
     permDesc: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', marginBottom: Spacing.xl },
     permButton: { backgroundColor: Colors.primary, paddingVertical: Spacing.md, paddingHorizontal: Spacing.xl, borderRadius: Radius.full },
     permButtonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-
     processingText: { fontSize: 18, fontWeight: '700', color: '#fff', marginTop: Spacing.lg, textAlign: 'center' },
     processingSubText: { fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: Spacing.sm, textAlign: 'center' },
-
     errorTitle: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary, marginTop: Spacing.lg },
     errorDesc: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', marginTop: Spacing.sm, marginBottom: Spacing.xl },
     retryButton: { flexDirection: 'row', backgroundColor: Colors.primary, paddingVertical: Spacing.md, paddingHorizontal: Spacing.xl, borderRadius: Radius.full, alignItems: 'center', gap: Spacing.sm },
     retryButtonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-
-    resultBanner: {
-        flexDirection: 'row', alignItems: 'flex-start',
-        backgroundColor: Colors.primaryLight, borderRadius: Radius.lg,
-        padding: Spacing.md, borderWidth: 1, borderColor: Colors.primary,
-        marginBottom: Spacing.md,
-    },
+    resultBanner: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: Colors.primaryLight, borderRadius: Radius.lg, padding: Spacing.md, borderWidth: 1, borderColor: Colors.primary, marginBottom: Spacing.md },
     resultBannerTitle: { fontSize: 15, fontWeight: '700', color: Colors.primary },
     resultBannerSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
-
-    gradeCompare: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-        backgroundColor: Colors.card, borderRadius: Radius.lg, padding: Spacing.lg,
-        marginBottom: Spacing.md, ...Shadow.sm,
-    },
+    gradeCompare: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.card, borderRadius: Radius.lg, padding: Spacing.lg, marginBottom: Spacing.md, ...Shadow.sm },
     gradeBox: { alignItems: 'center', flex: 1 },
     gradeBoxLabel: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1, marginBottom: Spacing.sm },
     gradeBadge: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
     gradeBadgeText: { fontSize: 26, fontWeight: '900', color: '#fff' },
     gradeArrow: { fontSize: 28, color: Colors.textMuted, marginHorizontal: Spacing.lg },
-
     card: { backgroundColor: Colors.card, borderRadius: Radius.lg, padding: Spacing.lg, ...Shadow.sm, marginBottom: Spacing.md },
     cardTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, marginBottom: Spacing.md },
     tableRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: Colors.border },
@@ -311,12 +297,10 @@ const styles = StyleSheet.create({
     newBadgeText: { fontSize: 9, color: '#fff', fontWeight: '800' },
     rowValue: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
     rowValueMuted: { color: Colors.textMuted, fontWeight: '400' },
-
     applyButton: { backgroundColor: Colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, paddingVertical: Spacing.md, borderRadius: Radius.full, ...Shadow.md, marginBottom: Spacing.sm },
     applyButtonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
     reshootButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, paddingVertical: Spacing.md },
     reshootButtonText: { color: Colors.primary, fontWeight: '600', fontSize: 15 },
-
     topOverlay: { position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.55)', paddingTop: Spacing.xl + 30, paddingBottom: Spacing.lg, paddingHorizontal: Spacing.lg, alignItems: 'center' },
     instruction: { color: '#fff', fontSize: 16, fontWeight: '700', textAlign: 'center' },
     instructionSub: { color: 'rgba(255,255,255,0.7)', fontSize: 13, textAlign: 'center', marginTop: 4 },

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Padho Label",
     "slug": "padho-label-v1-casubham",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -16,7 +16,7 @@
       "supportsTablet": true
     },
     "android": {
-      "versionCode": 7,
+      "versionCode": 8,
       "package": "com.padholabel.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -33,9 +33,10 @@
     },
     "plugins": [
       [
-        "expo-camera",
+        "react-native-vision-camera",
         {
-          "cameraPermission": "Allow Padho Label to access your camera to scan barcodes."
+          "cameraPermissionText": "Allow Padho Label to access your camera to scan barcodes and photograph ingredient labels.",
+          "enableMicrophonePermission": false
         }
       ]
     ],

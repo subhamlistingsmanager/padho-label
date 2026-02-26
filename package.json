@@ -1,5 +1,5 @@
 {
-  "name": "temp-app",
+  "name": "padho-label",
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
@@ -7,6 +7,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "prebuild": "expo prebuild --clean",
+    "build:android": "cd android && ./gradlew bundleRelease",
     "test": "jest"
   },
   "jest": {
@@ -19,7 +21,6 @@
     "@types/jest": "29.5.14",
     "axios": "^1.13.5",
     "expo": "~54.0.33",
-    "expo-camera": "~17.0.10",
     "expo-status-bar": "~3.0.9",
     "jest": "~29.7.0",
     "jest-expo": "~54.0.17",
@@ -29,6 +30,7 @@
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-svg": "15.12.1",
+    "react-native-vision-camera": "^4.6.4",
     "ts-jest": "^29.4.6"
   },
   "devDependencies": {

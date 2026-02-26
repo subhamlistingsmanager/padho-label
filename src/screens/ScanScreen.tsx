@@ -3,7 +3,12 @@ import {
     Text, View, StyleSheet, TouchableOpacity,
     ActivityIndicator, Animated,
 } from 'react-native';
-import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
+import {
+    Camera,
+    useCameraDevice,
+    useCameraPermission,
+    useCodeScanner,
+} from 'react-native-vision-camera';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { getProductByBarcode } from '../services/api';
@@ -14,24 +19,20 @@ import { Colors, Spacing, Radius } from '../theme';
 type Props = NativeStackScreenProps<RootStackParamList, 'Scan'>;
 
 const MAX_RETRIES = 3;
-const RETRY_DELAY_MS = [0, 1000, 2500]; // immediate, 1s, 2.5s
-
+const RETRY_DELAY_MS = [0, 1000, 2500];
 const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-const ERROR_MESSAGES: Record<string, string> = {
-    timeout: 'Request timed out. Checking network…',
-    network: 'Network error — retrying…',
-    notfound: 'Product not found in database.',
-    generic: 'Something went wrong. Tap to retry.',
-};
+type ErrType = 'timeout' | 'notfound' | 'generic';
 
 export default function ScanScreen({ navigation }: Props) {
-    const [permission, requestPermission] = useCameraPermissions();
-    const [scanned, setScanned] = useState(false);
+    const { hasPermission, requestPermission } = useCameraPermission();
+    const device = useCameraDevice('back');
+
+    const [active, setActive] = useState(true);
     const [loading, setLoading] = useState(false);
     const [attempt, setAttempt] = useState(0);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const [errorType, setErrorType] = useState<keyof typeof ERROR_MESSAGES | null>(null);
+    const [errorType, setErrorType] = useState<ErrType | null>(null);
     const lastBarcode = useRef<string | null>(null);
     const scanLineAnim = useRef(new Animated.Value(0)).current;
 
@@ -59,61 +60,76 @@ export default function ScanScreen({ navigation }: Props) {
                 return { product, error: null };
             } catch (err: any) {
                 lastError = err;
-                const code: string = err?.code ?? '';
-                // Don't retry on non-network errors
-                if (!code.includes('ETIMEDOUT') && !code.includes('NETWORK') &&
-                    err?.message?.includes('timeout') === false) {
-                    break;
-                }
+                const msg = (err?.message ?? '').toLowerCase();
+                if (!msg.includes('timeout') && !msg.includes('network') && !msg.includes('econnreset')) break;
             }
         }
         return { product: null, error: lastError };
     };
 
-    const handleBarCodeScanned = async (result: BarcodeScanningResult) => {
-        if (scanned || loading) return;
-        lastBarcode.current = result.data;
-        setScanned(true);
-        setLoading(true);
-        setErrorMsg(null);
-        setErrorType(null);
-        setAttempt(1);
+    // Vision Camera V4 code scanner hook — runs on the native thread, fast
+    const codeScanner = useCodeScanner({
+        codeTypes: ['ean-13', 'ean-8', 'upc-a', 'upc-e'],
+        onCodeScanned: async (codes) => {
+            if (!active || loading || codes.length === 0) return;
+            const barcode = codes[0].value;
+            if (!barcode) return;
 
-        const { product, error } = await fetchWithRetry(result.data);
+            lastBarcode.current = barcode;
+            setActive(false);
+            setLoading(true);
+            setErrorMsg(null);
+            setErrorType(null);
+            setAttempt(1);
 
-        if (product) {
-            await saveToHistory(product);
-            navigation.navigate('Result', { product });
-        } else if (error) {
-            const isTimeout = error.message?.toLowerCase().includes('timeout')
-                || (error as any).code?.includes('ETIMEDOUT');
-            setErrorType(isTimeout ? 'timeout' : 'generic');
-            setErrorMsg(
-                isTimeout
-                    ? 'Connection timed out. Check your internet and tap Retry.'
-                    : `Error: ${error.message || 'Unknown error'}. Tap Retry.`
-            );
-            setScanned(false);
-        } else {
-            // product is null — not found
-            setErrorType('notfound');
-            setErrorMsg('Product not found in database. Try another barcode or scan the ingredients label manually from the Results screen.');
-            setScanned(false);
-        }
-        setLoading(false);
-        setAttempt(0);
-    };
+            const { product, error } = await fetchWithRetry(barcode);
+
+            if (product) {
+                await saveToHistory(product);
+                navigation.navigate('Result', { product });
+            } else if (error) {
+                const isTimeout = (error.message ?? '').toLowerCase().includes('timeout');
+                setErrorType(isTimeout ? 'timeout' : 'generic');
+                setErrorMsg(
+                    isTimeout
+                        ? 'Connection timed out. Check your internet and tap Retry.'
+                        : `Error: ${error.message || 'Unknown'}. Tap Retry.`
+                );
+                setActive(false);
+            } else {
+                setErrorType('notfound');
+                setErrorMsg('Product not found in database. Try snapping the ingredients label from the Results screen.');
+                setActive(false);
+            }
+            setLoading(false);
+            setAttempt(0);
+        },
+    });
 
     const handleRetry = () => {
-        if (!lastBarcode.current) return;
         setErrorMsg(null);
         setErrorType(null);
-        handleBarCodeScanned({ data: lastBarcode.current } as BarcodeScanningResult);
+        setActive(true);
+        if (lastBarcode.current) {
+            // trigger fresh lookup on the same barcode
+            setActive(false);
+            setLoading(true);
+            fetchWithRetry(lastBarcode.current).then(async ({ product, error }) => {
+                if (product) {
+                    await saveToHistory(product);
+                    navigation.navigate('Result', { product });
+                } else {
+                    setErrorMsg(error?.message ?? 'Unknown error. Tap Retry.');
+                    setErrorType('generic');
+                }
+                setActive(true);
+                setLoading(false);
+            });
+        }
     };
 
-    if (!permission) return <View style={styles.container} />;
-
-    if (!permission.granted) {
+    // ── Permission gate ──────────────────────────────────────────────────────
+    if (!hasPermission) {
         return (
             <View style={styles.permissionContainer}>
                 <Text style={styles.permissionTitle}>Camera Access Needed</Text>
@@ -127,6 +143,15 @@ export default function ScanScreen({ navigation }: Props) {
         );
     }
 
+    if (!device) {
+        return (
+            <View style={styles.permissionContainer}>
+                <Text style={styles.permissionTitle}>No Camera Found</Text>
+                <Text style={styles.permissionDesc}>Could not access a back-facing camera.</Text>
+            </View>
+        );
+    }
+
     const scanLineTranslateY = scanLineAnim.interpolate({
         inputRange: [0, 1],
         outputRange: [0, 180],
@@ -134,13 +159,15 @@ export default function ScanScreen({ navigation }: Props) {
 
     return (
         <View style={styles.container}>
-            <CameraView
+            {/* ── Vision Camera ── */}
+            <Camera
                 style={StyleSheet.absoluteFill}
-                onBarcodeScanned={(!scanned && !loading) ? handleBarCodeScanned : undefined}
-                barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e'] }}
+                device={device}
+                isActive={active && !loading}
+                codeScanner={codeScanner}
             />
 
-            {/* Dark overlay */}
+            {/* ── Dark overlay ── */}
             <View style={styles.overlay}>
                 <View style={styles.overlayTop} />
                 <View style={styles.overlayMiddle}>
@@ -175,7 +202,7 @@ export default function ScanScreen({ navigation }: Props) {
                 </View>
             </View>
 
-            {/* Error Banner */}
+            {/* ── Error Banner ── */}
             {errorMsg && (
                 <View style={[
                     styles.errorBanner,
@@ -189,7 +216,9 @@ export default function ScanScreen({ navigation }: Props) {
                                 <Text style={styles.retryBtnText}>Retry</Text>
                             </TouchableOpacity>
                         )}
-                        <TouchableOpacity onPress={() => { setErrorMsg(null); setErrorType(null); }}>
+                        <TouchableOpacity onPress={() => {
+                            setErrorMsg(null); setErrorType(null); setActive(true);
+                        }}>
                             <XCircle color="#fff" size={20} />
                         </TouchableOpacity>
                     </View>
@@ -205,10 +234,7 @@ const CORNER_THICKNESS = 3;
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#000' },
-    permissionContainer: {
-        flex: 1, justifyContent: 'center', alignItems: 'center',
-        backgroundColor: Colors.background, padding: Spacing.xl,
-    },
+    permissionContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background, padding: Spacing.xl },
     permissionTitle: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary, marginBottom: Spacing.sm, textAlign: 'center' },
     permissionDesc: { fontSize: 15, color: Colors.textSecondary, textAlign: 'center', marginBottom: Spacing.xl, lineHeight: 22 },
     permissionButton: { backgroundColor: Colors.primary, paddingVertical: Spacing.md, paddingHorizontal: Spacing.xl, borderRadius: Radius.full },
@@ -230,10 +256,7 @@ const styles = StyleSheet.create({
     },
     loadingFrame: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     retryLabel: { color: Colors.primary, fontSize: 12, fontWeight: '600', marginTop: 8 },
-    overlayBottom: {
-        flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center',
-        justifyContent: 'flex-start', paddingTop: Spacing.xl,
-    },
+    overlayBottom: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'flex-start', paddingTop: Spacing.xl },
     hint: { color: 'rgba(255,255,255,0.75)', fontSize: 14, fontWeight: '500', textAlign: 'center' },
     errorBanner: {
         position: 'absolute', bottom: 0, left: 0, right: 0,
