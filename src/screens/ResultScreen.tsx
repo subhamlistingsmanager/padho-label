@@ -1,0 +1,338 @@
+import React, { useMemo } from 'react';
+import {
+    View, Text, StyleSheet, ScrollView, Image,
+    TouchableOpacity,
+} from 'react-native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types';
+import { calculateNutriScore } from '../services/ratingEngine';
+import { deriveFlags } from '../services/flagDerivation';
+import { AlertTriangle, CheckCircle, Camera, ScanLine } from 'lucide-react-native';
+import { Colors, Spacing, Radius, Shadow, Typography } from '../theme';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'Result'>;
+
+const GRADES: Array<{ grade: 'A' | 'B' | 'C' | 'D' | 'E'; color: string }> = [
+    { grade: 'A', color: Colors.gradeA },
+    { grade: 'B', color: Colors.gradeB },
+    { grade: 'C', color: Colors.gradeC },
+    { grade: 'D', color: Colors.gradeD },
+    { grade: 'E', color: Colors.gradeE },
+];
+
+const NOVA_LABELS: Record<number, { label: string; color: string }> = {
+    1: { label: 'Unprocessed', color: Colors.gradeA },
+    2: { label: 'Culinary ingredients', color: Colors.gradeB },
+    3: { label: 'Processed food', color: Colors.gradeC },
+    4: { label: 'Ultra-processed', color: Colors.gradeE },
+};
+
+export default function ResultScreen({ route, navigation }: Props) {
+    const { product } = route.params;
+
+    const rating = useMemo(() => calculateNutriScore(product.nutrition), [product]);
+    const flags = useMemo(() => deriveFlags(product.nutrition, product.nova_group), [product]);
+
+    const redFlags = flags.filter(f => f.type === 'red');
+    const greenFlags = flags.filter(f => f.type === 'green');
+
+    const novaInfo = product.nova_group ? NOVA_LABELS[product.nova_group] : null;
+
+    return (
+        <View style={styles.wrapper}>
+            <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
+                {/* Header */}
+                <View style={styles.header}>
+                    {product.image_url ? (
+                        <Image source={{ uri: product.image_url }} style={styles.productImage} />
+                    ) : (
+                        <View style={[styles.productImage, styles.productImagePlaceholder]}>
+                            <Camera color={Colors.textMuted} size={32} />
+                        </View>
+                    )}
+                    <View style={styles.headerText}>
+                        <Text style={styles.productName}>{product.name}</Text>
+                        {product.brand ? (
+                            <Text style={styles.brand}>{product.brand}</Text>
+                        ) : null}
+                        {product.barcode ? (
+                            <Text style={styles.barcode}>#{product.barcode}</Text>
+                        ) : null}
+                    </View>
+                </View>
+
+                {/* Nutri-Score Bar */}
+                <View style={styles.scoreCard}>
+                    <Text style={styles.scoreSectionLabel}>Nutri-Score</Text>
+                    <View style={styles.gradeBar}>
+                        {GRADES.map(({ grade, color }) => (
+                            <View
+                                key={grade}
+                                style={[
+                                    styles.gradeCell,
+                                    { backgroundColor: color },
+                                    rating.grade === grade && styles.gradeCellActive,
+                                ]}
+                            >
+                                <Text
+                                    style={[
+                                        styles.gradeCellText,
+                                        rating.grade === grade && styles.gradeCellTextActive,
+                                    ]}
+                                >
+                                    {grade}
+                                </Text>
+                            </View>
+                        ))}
+                    </View>
+                    <Text style={styles.scoreDetail}>Score: {rating.score}</Text>
+
+                    {/* NOVA Group */}
+                    {novaInfo && (
+                        <View style={[styles.novaBadge, { borderColor: novaInfo.color }]}>
+                            <Text style={[styles.novaGroup, { color: novaInfo.color }]}>
+                                NOVA {product.nova_group}
+                            </Text>
+                            <Text style={[styles.novaLabel, { color: novaInfo.color }]}>
+                                {novaInfo.label}
+                            </Text>
+                        </View>
+                    )}
+                </View>
+
+                {/* Red Flags */}
+                {redFlags.length > 0 && (
+                    <View style={styles.section}>
+                        <Text style={[styles.sectionTitle, { color: Colors.gradeE }]}>⚠ Watch Out</Text>
+                        {redFlags.map((flag, index) => (
+                            <View key={index} style={[styles.flagItem, styles.flagItemRed]}>
+                                <AlertTriangle color={Colors.gradeE} size={18} />
+                                <View style={styles.flagText}>
+                                    <Text style={styles.flagTitle}>{flag.title}</Text>
+                                    <Text style={styles.flagDesc}>{flag.description}</Text>
+                                </View>
+                            </View>
+                        ))}
+                    </View>
+                )}
+
+                {/* Green Flags */}
+                {greenFlags.length > 0 && (
+                    <View style={styles.section}>
+                        <Text style={[styles.sectionTitle, { color: Colors.gradeA }]}>✓ Good Points</Text>
+                        {greenFlags.map((flag, index) => (
+                            <View key={index} style={[styles.flagItem, styles.flagItemGreen]}>
+                                <CheckCircle color={Colors.gradeA} size={18} />
+                                <View style={styles.flagText}>
+                                    <Text style={styles.flagTitle}>{flag.title}</Text>
+                                    <Text style={styles.flagDesc}>{flag.description}</Text>
+                                </View>
+                            </View>
+                        ))}
+                    </View>
+                )}
+
+                {/* Nutrition Table */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Nutrition per 100g</Text>
+                    <View style={styles.table}>
+                        <NutritionRow label="Energy" value={`${product.nutrition.energy_100g ?? '—'} kJ`} level="neutral" />
+                        <NutritionRow label="Sugar" value={`${product.nutrition.sugars_100g ?? '—'} g`} level={getNutritionLevel('sugar', product.nutrition.sugars_100g)} />
+                        <NutritionRow label="Fat" value={`${product.nutrition.fat_100g ?? '—'} g`} level="neutral" />
+                        <NutritionRow label="Sat. Fat" value={`${product.nutrition.saturated_fat_100g ?? '—'} g`} level={getNutritionLevel('satfat', product.nutrition.saturated_fat_100g)} />
+                        <NutritionRow label="Fiber" value={`${product.nutrition.fiber_100g ?? '—'} g`} level={getNutritionLevel('fiber', product.nutrition.fiber_100g)} isPositive />
+                        <NutritionRow label="Protein" value={`${product.nutrition.proteins_100g ?? '—'} g`} level={getNutritionLevel('protein', product.nutrition.proteins_100g)} isPositive />
+                        <NutritionRow label="Salt" value={`${product.nutrition.salt_100g ?? '—'} g`} level={getNutritionLevel('salt', product.nutrition.salt_100g)} isLast />
+                    </View>
+                </View>
+            </ScrollView>
+
+            {/* Scan Again FAB */}
+            <TouchableOpacity
+                style={styles.fab}
+                onPress={() => navigation.navigate('Scan')}
+                activeOpacity={0.85}
+            >
+                <ScanLine color="#fff" size={22} />
+                <Text style={styles.fabText}>Scan Again</Text>
+            </TouchableOpacity>
+        </View>
+    );
+}
+
+type Level = 'good' | 'bad' | 'neutral';
+
+function getNutritionLevel(type: string, value?: number): Level {
+    if (value === undefined || value === null) return 'neutral';
+    switch (type) {
+        case 'sugar': return value > 15 ? 'bad' : value < 5 ? 'good' : 'neutral';
+        case 'satfat': return value > 5 ? 'bad' : 'neutral';
+        case 'salt': return value > 1.5 ? 'bad' : 'neutral';
+        case 'fiber': return value > 6 ? 'good' : 'neutral';
+        case 'protein': return value > 10 ? 'good' : 'neutral';
+        default: return 'neutral';
+    }
+}
+
+const LEVEL_COLORS: Record<Level, string> = {
+    good: Colors.gradeB,
+    bad: Colors.gradeD,
+    neutral: Colors.textMuted,
+};
+
+const NutritionRow = ({
+    label, value, level, isLast = false, isPositive = false,
+}: {
+    label: string; value: string; level: Level; isLast?: boolean; isPositive?: boolean;
+}) => (
+    <View style={[styles.tableRow, isLast && { borderBottomWidth: 0 }]}>
+        <View style={[styles.levelDot, { backgroundColor: LEVEL_COLORS[level] }]} />
+        <Text style={styles.tableLabel}>{label}</Text>
+        <Text style={[styles.tableValue, { color: LEVEL_COLORS[level] }]}>{value}</Text>
+    </View>
+);
+
+const styles = StyleSheet.create({
+    wrapper: { flex: 1, backgroundColor: Colors.background },
+    container: { flex: 1 },
+    header: {
+        flexDirection: 'row',
+        padding: Spacing.lg,
+        backgroundColor: Colors.card,
+        alignItems: 'center',
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.border,
+    },
+    productImage: {
+        width: 80,
+        height: 80,
+        borderRadius: Radius.md,
+        backgroundColor: Colors.border,
+        marginRight: Spacing.md,
+    },
+    productImagePlaceholder: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerText: { flex: 1 },
+    productName: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary, lineHeight: 24 },
+    brand: { fontSize: 14, color: Colors.textSecondary, marginTop: 4 },
+    barcode: { fontSize: 11, color: Colors.textMuted, marginTop: 4 },
+
+    scoreCard: {
+        backgroundColor: Colors.card,
+        margin: Spacing.md,
+        borderRadius: Radius.lg,
+        padding: Spacing.lg,
+        alignItems: 'center',
+        ...Shadow.sm,
+    },
+    scoreSectionLabel: {
+        ...Typography.label,
+        marginBottom: Spacing.md,
+    },
+    gradeBar: {
+        flexDirection: 'row',
+        borderRadius: Radius.full,
+        overflow: 'hidden',
+        width: '100%',
+        height: 52,
+    },
+    gradeCell: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: 0.35,
+    },
+    gradeCellActive: {
+        opacity: 1,
+        transform: [{ scaleY: 1.12 }],
+    },
+    gradeCellText: {
+        fontSize: 18,
+        fontWeight: '900',
+        color: '#fff',
+    },
+    gradeCellTextActive: {
+        fontSize: 22,
+    },
+    scoreDetail: {
+        ...Typography.caption,
+        marginTop: Spacing.sm,
+    },
+    novaBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: Spacing.md,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.xs,
+        borderRadius: Radius.full,
+        borderWidth: 1.5,
+        gap: Spacing.sm,
+    },
+    novaGroup: { fontWeight: '800', fontSize: 13 },
+    novaLabel: { fontSize: 13 },
+
+    section: {
+        backgroundColor: Colors.card,
+        marginHorizontal: Spacing.md,
+        marginBottom: Spacing.sm,
+        borderRadius: Radius.lg,
+        padding: Spacing.lg,
+        ...Shadow.sm,
+    },
+    sectionTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: Colors.textPrimary,
+        marginBottom: Spacing.md,
+    },
+    flagItem: {
+        flexDirection: 'row',
+        marginBottom: Spacing.sm,
+        alignItems: 'flex-start',
+        padding: Spacing.sm,
+        borderRadius: Radius.sm,
+    },
+    flagItemRed: { backgroundColor: '#fff5f5' },
+    flagItemGreen: { backgroundColor: '#f0fdf4' },
+    flagText: { marginLeft: Spacing.sm, flex: 1 },
+    flagTitle: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
+    flagDesc: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
+
+    table: { borderRadius: Radius.sm, overflow: 'hidden' },
+    tableRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.border,
+    },
+    levelDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        marginRight: Spacing.sm,
+    },
+    tableLabel: { flex: 1, fontSize: 14, color: Colors.textSecondary },
+    tableValue: { fontSize: 14, fontWeight: '700' },
+
+    fab: {
+        position: 'absolute',
+        bottom: Spacing.xl,
+        alignSelf: 'center',
+        backgroundColor: Colors.primary,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: Spacing.md,
+        paddingHorizontal: Spacing.xl,
+        borderRadius: Radius.full,
+        ...Shadow.md,
+        gap: Spacing.sm,
+    },
+    fabText: {
+        color: '#fff',
+        fontWeight: '700',
+        fontSize: 16,
+    },
+});
