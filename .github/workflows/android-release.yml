@@ -39,7 +39,9 @@ jobs:
       - name: Build & Submit Android production AAB
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          ANDROID_SERVICE_ACCOUNT_JSON: ${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}
         run: |
+          echo "$ANDROID_SERVICE_ACCOUNT_JSON" > pc-api-key.json
           eas build \
             --platform android \
             --profile production \
