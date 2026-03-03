@@ -31,4 +31,5 @@ export type RootStackParamList = {
     History: undefined;
     Settings: undefined;
     IngredientsSnap: { product: Product };
+    Chat: { product: Product };
 };

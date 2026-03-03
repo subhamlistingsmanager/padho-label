@@ -27,6 +27,16 @@ export const Colors = {
     success: '#1b5e20',
     warning: '#f57c00',
     info: '#0984e3',
+
+    // Status Dots (Nutrient Analysis)
+    statusPositive: '#4caf50',
+    statusNegative: '#f44336',
+    statusFair: '#ff9800',
+    statusLow: '#b2bec3',
+
+    // Chat
+    chatBubbleUser: '#6c5ce7',
+    chatBubbleBot: '#f1f2f6',
 };
 
 export const Typography = {

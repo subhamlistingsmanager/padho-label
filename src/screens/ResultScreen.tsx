@@ -1,15 +1,17 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, Image,
-    TouchableOpacity,
+    TouchableOpacity, Modal,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
-import { calculateNutriScore } from '../services/ratingEngine';
+import { calculateNutriScore, RDA } from '../services/ratingEngine';
 import { deriveFlags } from '../services/flagDerivation';
+import { findAdditives } from '../services/additivesService';
 import {
     AlertTriangle, CheckCircle, Camera, ScanLine,
-    HelpCircle, ChevronRight,
+    HelpCircle, ChevronRight, MessageCircle, Info,
+    ArrowLeft, ThumbsUp, ThumbsDown, Package,
 } from 'lucide-react-native';
 import { Colors, Spacing, Radius, Shadow, Typography } from '../theme';
 
@@ -23,360 +25,262 @@ const GRADES: Array<{ grade: 'A' | 'B' | 'C' | 'D' | 'E'; color: string }> = [
     { grade: 'E', color: Colors.gradeE },
 ];
 
-const NOVA_LABELS: Record<number, { label: string; desc: string; color: string }> = {
-    1: { label: 'NOVA 1', desc: 'Unprocessed / minimally processed', color: Colors.gradeA },
-    2: { label: 'NOVA 2', desc: 'Processed culinary ingredients', color: Colors.gradeB },
-    3: { label: 'NOVA 3', desc: 'Processed food', color: Colors.gradeC },
-    4: { label: 'NOVA 4', desc: 'Ultra-processed', color: Colors.gradeE },
+const STATUS_COLORS = {
+    positive: Colors.statusPositive,
+    negative: Colors.statusNegative,
+    fair: Colors.statusFair,
+    low: Colors.statusLow,
 };
 
 export default function ResultScreen({ route, navigation }: Props) {
     const { product } = route.params;
+    const [isNutrientModalVisible, setIsNutrientModalVisible] = useState(false);
+    const [perServing, setPerServing] = useState(false);
 
     const rating = useMemo(() => calculateNutriScore(product.nutrition), [product]);
     const flags = useMemo(() => deriveFlags(product.nutrition, product.nova_group), [product]);
+    const additives = useMemo(() => findAdditives(product.ingredients || ''), [product]);
 
     const redFlags = flags.filter(f => f.type === 'red');
     const greenFlags = flags.filter(f => f.type === 'green');
-    const novaInfo = product.nova_group ? NOVA_LABELS[product.nova_group] : null;
+
+    const renderNutrientRow = (key: string, label: string) => {
+        const data = rating.nutrients[key];
+        if (!data) return null;
+
+        return (
+            <View key={key} style={styles.nutrientListItem}>
+                <View style={[styles.statusDot, { backgroundColor: STATUS_COLORS[data.status as keyof typeof STATUS_COLORS] }]} />
+                <View style={styles.nutrientInfo}>
+                    <Text style={styles.nutrientLabel}>{label}</Text>
+                    <Text style={styles.nutrientValue}>
+                        {(perServing ? (data.value * 0.3).toFixed(1) : data.value)} {data.unit}
+                    </Text>
+                </View>
+                <View style={styles.rdaContainer}>
+                    <Text style={styles.rdaValue}>{data.rdaPercentage}%</Text>
+                    <TouchableOpacity style={styles.infoIcon}>
+                        <ChevronRight color={Colors.textMuted} size={16} />
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
+    };
 
     return (
         <View style={styles.wrapper}>
+            <View style={styles.navHeader}>
+                <TouchableOpacity onPress={() => navigation.goBack()}>
+                    <ArrowLeft color={Colors.textPrimary} size={24} />
+                </TouchableOpacity>
+                <View style={styles.navIcons}>
+                    <TouchableOpacity style={styles.navIcon}><Info color={Colors.textPrimary} size={22} /></TouchableOpacity>
+                    <TouchableOpacity style={styles.navIcon}><Package color={Colors.textPrimary} size={22} /></TouchableOpacity>
+                </View>
+            </View>
+
             <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 110 }}>
+                {/* ── Product Summary ── */}
+                <View style={styles.productSummary}>
+                    {renderNutrientRow('energy', 'Energy')}
+                    {renderNutrientRow('sugars', 'Total Sugars')}
+                    {renderNutrientRow('saturated_fat', 'Saturated Fat')}
+                    <View style={styles.divider} />
 
-                {/* ── Product Header ── */}
-                <View style={styles.header}>
-                    {product.image_url ? (
-                        <Image source={{ uri: product.image_url }} style={styles.productImage} />
-                    ) : (
-                        <View style={[styles.productImage, styles.imagePlaceholder]}>
-                            <Camera color={Colors.textMuted} size={28} />
-                        </View>
-                    )}
-                    <View style={styles.headerText}>
-                        <Text style={styles.productName}>{product.name}</Text>
-                        {product.brand ? <Text style={styles.brand}>{product.brand}</Text> : null}
-                        {product.barcode ? <Text style={styles.barcode}>#{product.barcode}</Text> : null}
-                    </View>
+                    <Text style={styles.subHeading}>What You’ll Like 🙂</Text>
+                    {renderNutrientRow('fiber', 'Dietary Fiber')}
+                    {renderNutrientRow('sodium', 'Sodium')}
                 </View>
 
-                {/* ── Nutri-Score ── */}
-                <View style={styles.card}>
-                    <Text style={styles.cardLabel}>NUTRI-SCORE</Text>
+                {/* ── All Nutrients / Ingredients CTA ── */}
+                <TouchableOpacity
+                    style={styles.ctaCard}
+                    onPress={() => setIsNutrientModalVisible(true)}
+                >
+                    <Text style={styles.ctaText}>All Nutrients</Text>
+                    <ChevronRight color={Colors.textPrimary} size={20} />
+                </TouchableOpacity>
 
-                    {rating.hasData ? (
-                        <>
-                            <View style={styles.gradeBar}>
-                                {GRADES.map(({ grade, color }) => (
-                                    <View
-                                        key={grade}
-                                        style={[
-                                            styles.gradeCell,
-                                            { backgroundColor: color },
-                                            rating.grade === grade && styles.gradeCellActive,
-                                        ]}
-                                    >
-                                        <Text style={[
-                                            styles.gradeCellText,
-                                            rating.grade === grade && styles.gradeCellTextActive,
-                                        ]}>
-                                            {grade}
-                                        </Text>
-                                    </View>
-                                ))}
-                            </View>
-                            <Text style={styles.scoreDetail}>Score: {rating.score}</Text>
-                        </>
-                    ) : (
-                        <View style={styles.noDataBox}>
-                            <HelpCircle color={Colors.textMuted} size={28} />
-                            <Text style={styles.noDataTitle}>No nutrition data in database</Text>
-                            <Text style={styles.noDataSub}>
-                                This product hasn't been fully catalogued on Open Food Facts.
-                                Snap the ingredients label below to keep a record.
-                            </Text>
-                        </View>
-                    )}
+                <TouchableOpacity style={styles.ctaCard}>
+                    <Text style={styles.ctaText}>All Ingredients</Text>
+                    <ChevronRight color={Colors.textPrimary} size={20} />
+                </TouchableOpacity>
 
-                    {/* NOVA Group */}
-                    {novaInfo && (
-                        <View style={[styles.novaBadge, { borderColor: novaInfo.color }]}>
-                            <Text style={[styles.novaLabel, { color: novaInfo.color }]}>{novaInfo.label}</Text>
-                            <Text style={[styles.novaDesc, { color: novaInfo.color }]}>{novaInfo.desc}</Text>
-                        </View>
-                    )}
-                </View>
-
-                {/* ── Flags ── */}
-                {redFlags.length > 0 && (
+                {/* ── Additives Analysis ── */}
+                {additives.length > 0 && (
                     <View style={styles.card}>
-                        <Text style={[styles.sectionTitle, { color: Colors.gradeE }]}>⚠ Watch Out</Text>
-                        {redFlags.map((flag, i) => (
-                            <View key={i} style={[styles.flagItem, styles.flagItemRed]}>
-                                <AlertTriangle color={Colors.gradeE} size={18} />
-                                <View style={styles.flagText}>
-                                    <Text style={styles.flagTitle}>{flag.title}</Text>
-                                    <Text style={styles.flagDesc}>{flag.description}</Text>
-                                </View>
+                        <View style={styles.tabHeader}>
+                            <View style={[styles.tab, styles.tabActive]}>
+                                <Text style={styles.tabTextActive}>Additives ({additives.length})</Text>
                             </View>
-                        ))}
-                    </View>
-                )}
-                {greenFlags.length > 0 && (
-                    <View style={styles.card}>
-                        <Text style={[styles.sectionTitle, { color: Colors.gradeA }]}>✓ Good Points</Text>
-                        {greenFlags.map((flag, i) => (
-                            <View key={i} style={[styles.flagItem, styles.flagItemGreen]}>
-                                <CheckCircle color={Colors.gradeA} size={18} />
-                                <View style={styles.flagText}>
-                                    <Text style={styles.flagTitle}>{flag.title}</Text>
-                                    <Text style={styles.flagDesc}>{flag.description}</Text>
-                                </View>
+                            <View style={styles.tab}>
+                                <Text style={styles.tabText}>Ingredients</Text>
+                            </View>
+                        </View>
+                        {additives.map((add, i) => (
+                            <View key={i} style={styles.additiveRow}>
+                                <View style={[styles.statusDotSmall, { backgroundColor: add.level === 'high' ? Colors.statusNegative : add.level === 'moderate' ? Colors.statusFair : Colors.statusPositive }]} />
+                                <Text style={styles.additiveName}>{add.name}</Text>
+                                <Text style={[styles.concernLabel, { color: add.level === 'high' ? Colors.statusNegative : add.level === 'moderate' ? Colors.statusFair : Colors.statusPositive }]}>
+                                    {add.level.charAt(0).toUpperCase() + add.level.slice(1)} Concern
+                                </Text>
+                                <ChevronRight color={Colors.textMuted} size={16} />
                             </View>
                         ))}
                     </View>
                 )}
 
-                {/* ── Nutrition Table ── */}
-                <View style={styles.card}>
-                    <Text style={styles.sectionTitle}>Nutrition per 100g</Text>
-                    {!rating.hasData && (
-                        <View style={styles.missingDataBanner}>
-                            <AlertTriangle color={Colors.warning} size={14} />
-                            <Text style={styles.missingDataText}>
-                                Values unavailable — snap the label below
-                            </Text>
-                        </View>
-                    )}
-                    <View style={styles.table}>
-                        <NutritionRow label="Energy" value={product.nutrition.energy_100g} unit="kJ" level="neutral" />
-                        <NutritionRow label="Carbs" value={product.nutrition.carbohydrates_100g} unit="g" level="neutral" />
-                        <NutritionRow label="Sugar" value={product.nutrition.sugars_100g} unit="g" level={lvl('sugar', product.nutrition.sugars_100g)} />
-                        <NutritionRow label="Fat" value={product.nutrition.fat_100g} unit="g" level="neutral" />
-                        <NutritionRow label="Sat. Fat" value={product.nutrition.saturated_fat_100g} unit="g" level={lvl('satfat', product.nutrition.saturated_fat_100g)} />
-                        <NutritionRow label="Fiber" value={product.nutrition.fiber_100g} unit="g" level={lvl('fiber', product.nutrition.fiber_100g)} />
-                        <NutritionRow label="Protein" value={product.nutrition.proteins_100g} unit="g" level={lvl('protein', product.nutrition.proteins_100g)} />
-                        <NutritionRow label="Salt" value={product.nutrition.salt_100g} unit="g" level={lvl('salt', product.nutrition.salt_100g)} />
-                        {product.nutrition.cholesterol_mg_100g != null && (
-                            <NutritionRow label="Cholesterol" value={product.nutrition.cholesterol_mg_100g} unit="mg" level="neutral" isLast />
-                        )}
-                    </View>
+                {/* ── Recommendation ── */}
+                <View style={styles.recommendationCard}>
+                    <Text style={styles.recTitle}>Highest Rated Product</Text>
+                    <Text style={styles.recSub}>This is already the best-rated product in its category within our database.</Text>
                 </View>
 
-                {/* ── Ingredients Text ── */}
-                {product.ingredients ? (
-                    <View style={styles.card}>
-                        <Text style={styles.sectionTitle}>Ingredients</Text>
-                        <Text style={styles.ingredientsText}>{product.ingredients}</Text>
+                {/* ── Purchase Feedback ── */}
+                <View style={styles.feedbackCard}>
+                    <Text style={styles.feedbackTitle}>Would you buy this product?</Text>
+                    <View style={styles.feedbackButtons}>
+                        <TouchableOpacity style={[styles.btn, styles.btnYes]}><Text style={styles.btnTextYes}>Yes</Text></TouchableOpacity>
+                        <TouchableOpacity style={[styles.btn, styles.btnNo]}><Text style={styles.btnTextNo}>No</Text></TouchableOpacity>
+                        <TouchableOpacity style={[styles.btn, styles.btnAlready]}><Text style={styles.btnTextAlready}>Already Bought</Text></TouchableOpacity>
                     </View>
-                ) : null}
-
-                {/* ── Ingredients Photo ── */}
-                <View style={styles.card}>
-                    <Text style={styles.sectionTitle}>Ingredients Label Photo</Text>
-                    {product.ingredientsImageUri ? (
-                        <>
-                            <Image
-                                source={{ uri: product.ingredientsImageUri }}
-                                style={styles.ingredientsPhoto}
-                                resizeMode="contain"
-                            />
-                            <TouchableOpacity
-                                style={styles.reshootButton}
-                                onPress={() => navigation.navigate('IngredientsSnap', { product })}
-                            >
-                                <Camera color={Colors.primary} size={16} />
-                                <Text style={styles.reshootText}>Re-shoot</Text>
-                            </TouchableOpacity>
-                        </>
-                    ) : (
-                        <TouchableOpacity
-                            style={styles.snapButton}
-                            onPress={() => navigation.navigate('IngredientsSnap', { product })}
-                            activeOpacity={0.85}
-                        >
-                            <Camera color={Colors.primary} size={22} />
-                            <View style={{ flex: 1, marginLeft: Spacing.md }}>
-                                <Text style={styles.snapButtonTitle}>Snap Ingredients Label</Text>
-                                <Text style={styles.snapButtonSub}>Photograph the back of the pack</Text>
-                            </View>
-                            <ChevronRight color={Colors.textMuted} size={18} />
-                        </TouchableOpacity>
-                    )}
                 </View>
-
             </ScrollView>
 
-            {/* ── Scan Again FAB ── */}
+            {/* ── AI Chat FAB ── */}
             <TouchableOpacity
-                style={styles.fab}
-                onPress={() => navigation.navigate('Scan')}
-                activeOpacity={0.85}
+                style={styles.chatFab}
+                onPress={() => navigation.navigate('Chat', { product })}
             >
-                <ScanLine color="#fff" size={22} />
-                <Text style={styles.fabText}>Scan Again</Text>
+                <MessageCircle color="#fff" size={28} />
             </TouchableOpacity>
+
+            {/* ── All Nutrients Modal ── */}
+            <Modal visible={isNutrientModalVisible} animationType="slide" transparent>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>All Nutrients</Text>
+                            <TouchableOpacity onPress={() => setIsNutrientModalVisible(false)}><ArrowLeft color={Colors.textPrimary} size={24} /></TouchableOpacity>
+                        </View>
+
+                        <View style={styles.toggleContainer}>
+                            <TouchableOpacity
+                                style={[styles.toggleBtn, !perServing && styles.toggleBtnActive]}
+                                onPress={() => setPerServing(false)}
+                            >
+                                <Text style={[styles.toggleBtnText, !perServing && styles.toggleBtnTextActive]}>Per 100g</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.toggleBtn, perServing && styles.toggleBtnActive]}
+                                onPress={() => setPerServing(true)}
+                            >
+                                <Text style={[styles.toggleBtnText, perServing && styles.toggleBtnTextActive]}>Per 30g</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.legend}>
+                            <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: Colors.statusPositive }]} /><Text style={styles.legendText}>Positive</Text></View>
+                            <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: Colors.statusNegative }]} /><Text style={styles.legendText}>Negative</Text></View>
+                            <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: Colors.statusFair }]} /><Text style={styles.legendText}>Fair</Text></View>
+                            <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: Colors.statusLow }]} /><Text style={styles.legendText}>Low Value</Text></View>
+                        </View>
+
+                        <View style={styles.modalTable}>
+                            <View style={styles.tableHeader}>
+                                <Text style={styles.tableHeaderText}>Nutrient</Text>
+                                <Text style={styles.tableHeaderText}>RDA%</Text>
+                            </View>
+                            <ScrollView>
+                                {Object.keys(rating.nutrients).map(key => renderNutrientRow(key, key.replace('_', ' ').toUpperCase()))}
+                            </ScrollView>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-type Level = 'good' | 'bad' | 'neutral';
-const LEVEL_COLORS: Record<Level, string> = {
-    good: Colors.gradeB,
-    bad: Colors.gradeD,
-    neutral: Colors.textMuted,
-};
-
-function lvl(type: string, val?: number): Level {
-    if (val == null) return 'neutral';
-    switch (type) {
-        case 'sugar': return val > 15 ? 'bad' : val < 5 ? 'good' : 'neutral';
-        case 'satfat': return val > 5 ? 'bad' : 'neutral';
-        case 'salt': return val > 1.5 ? 'bad' : 'neutral';
-        case 'fiber': return val > 6 ? 'good' : val > 3 ? 'neutral' : 'neutral';
-        case 'protein': return val > 10 ? 'good' : 'neutral';
-        default: return 'neutral';
-    }
-}
-
-const NutritionRow = ({
-    label, value, unit, level, isLast = false,
-}: {
-    label: string; value?: number; unit: string; level: Level; isLast?: boolean;
-}) => (
-    <View style={[styles.tableRow, isLast && { borderBottomWidth: 0 }]}>
-        <View style={[styles.levelDot, { backgroundColor: LEVEL_COLORS[level] }]} />
-        <Text style={styles.tableLabel}>{label}</Text>
-        <Text style={[styles.tableValue, { color: LEVEL_COLORS[level] }]}>
-            {value != null ? `${value} ${unit}` : `— ${unit}`}
-        </Text>
-    </View>
-);
-
-// ─── Styles ─────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
     wrapper: { flex: 1, backgroundColor: Colors.background },
+    navHeader: {
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+        paddingHorizontal: Spacing.lg, paddingTop: 60, paddingBottom: Spacing.md,
+        backgroundColor: Colors.card,
+    },
+    navIcons: { flexDirection: 'row', gap: Spacing.md },
+    navIcon: { opacity: 0.8 },
     container: { flex: 1 },
 
-    header: {
-        flexDirection: 'row',
-        padding: Spacing.lg,
-        backgroundColor: Colors.card,
-        alignItems: 'center',
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
+    productSummary: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md },
+    nutrientListItem: {
+        flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.md,
+        borderBottomWidth: 1, borderBottomColor: Colors.divider,
     },
-    productImage: {
-        width: 80, height: 80, borderRadius: Radius.md,
-        backgroundColor: Colors.border, marginRight: Spacing.md,
-    },
-    imagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
-    headerText: { flex: 1 },
-    productName: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary, lineHeight: 24 },
-    brand: { fontSize: 14, color: Colors.textSecondary, marginTop: 4 },
-    barcode: { fontSize: 11, color: Colors.textMuted, marginTop: 4 },
+    statusDot: { width: 12, height: 12, borderRadius: 6, marginRight: Spacing.md },
+    statusDotSmall: { width: 8, height: 8, borderRadius: 4, marginRight: Spacing.md },
+    nutrientInfo: { flex: 1 },
+    nutrientLabel: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary },
+    nutrientValue: { fontSize: 14, color: Colors.textSecondary, marginTop: 2 },
+    rdaContainer: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+    rdaValue: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
+    infoIcon: { padding: 4 },
+    divider: { height: 1, backgroundColor: Colors.divider, marginVertical: Spacing.lg },
+    subHeading: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary, marginBottom: Spacing.md },
 
-    card: {
-        backgroundColor: Colors.card,
-        margin: Spacing.md,
-        marginBottom: 0,
-        borderRadius: Radius.lg,
-        padding: Spacing.lg,
-        ...Shadow.sm,
+    ctaCard: {
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+        backgroundColor: Colors.card, padding: Spacing.lg, marginTop: Spacing.sm,
     },
-    cardLabel: { ...Typography.label, marginBottom: Spacing.md },
+    ctaText: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
 
-    gradeBar: {
-        flexDirection: 'row', borderRadius: Radius.full,
-        overflow: 'hidden', width: '100%', height: 52,
-    },
-    gradeCell: {
-        flex: 1, alignItems: 'center', justifyContent: 'center', opacity: 0.35,
-    },
-    gradeCellActive: { opacity: 1, transform: [{ scaleY: 1.12 }] },
-    gradeCellText: { fontSize: 18, fontWeight: '900', color: '#fff' },
-    gradeCellTextActive: { fontSize: 22 },
-    scoreDetail: { ...Typography.caption, marginTop: Spacing.sm, textAlign: 'center' },
+    card: { backgroundColor: Colors.card, marginTop: Spacing.sm, padding: Spacing.lg },
+    tabHeader: { flexDirection: 'row', backgroundColor: '#f1f2f6', borderRadius: Radius.full, padding: 4, marginBottom: Spacing.lg },
+    tab: { flex: 1, paddingVertical: 10, alignItems: 'center' },
+    tabActive: { backgroundColor: Colors.chatBubbleUser, borderRadius: Radius.full },
+    tabText: { fontWeight: '600', color: Colors.textSecondary },
+    tabTextActive: { fontWeight: '600', color: '#fff' },
+    additiveRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.divider },
+    additiveName: { flex: 1, fontSize: 15, fontWeight: '600' },
+    concernLabel: { fontSize: 13, fontWeight: '600', marginRight: Spacing.sm },
 
-    noDataBox: {
-        alignItems: 'center', padding: Spacing.lg,
-        backgroundColor: Colors.background, borderRadius: Radius.md,
-    },
-    noDataTitle: {
-        fontSize: 15, fontWeight: '600', color: Colors.textSecondary,
-        marginTop: Spacing.sm, textAlign: 'center',
-    },
-    noDataSub: {
-        fontSize: 13, color: Colors.textMuted, marginTop: Spacing.xs,
-        textAlign: 'center', lineHeight: 18,
+    recommendationCard: { backgroundColor: Colors.card, marginTop: Spacing.sm, padding: Spacing.lg, alignItems: 'center' },
+    recTitle: { fontSize: 16, fontWeight: '800', marginBottom: 8 },
+    recSub: { textAlign: 'center', color: Colors.textSecondary, fontSize: 14, lineHeight: 20 },
+
+    feedbackCard: { padding: Spacing.lg, alignItems: 'center', paddingBottom: 40 },
+    feedbackTitle: { fontSize: 18, fontWeight: '700', color: Colors.chatBubbleUser, marginBottom: Spacing.lg },
+    feedbackButtons: { flexDirection: 'row', gap: Spacing.sm },
+    btn: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: Radius.full, borderWidth: 1 },
+    btnYes: { borderColor: Colors.statusPositive },
+    btnNo: { borderColor: Colors.statusNegative },
+    btnAlready: { borderColor: Colors.textMuted },
+    btnTextYes: { color: Colors.statusPositive, fontWeight: '700' },
+    btnTextNo: { color: Colors.statusNegative, fontWeight: '700' },
+    btnTextAlready: { color: Colors.textMuted, fontWeight: '700' },
+
+    chatFab: {
+        position: 'absolute', right: 20, bottom: 40,
+        backgroundColor: Colors.chatBubbleUser, width: 64, height: 64,
+        borderRadius: 32, alignItems: 'center', justifyContent: 'center',
+        ...Shadow.lg,
     },
 
-    novaBadge: {
-        flexDirection: 'row', alignItems: 'center',
-        marginTop: Spacing.md, paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.xs, borderRadius: Radius.full,
-        borderWidth: 1.5, gap: Spacing.sm, alignSelf: 'center',
-    },
-    novaLabel: { fontWeight: '800', fontSize: 13 },
-    novaDesc: { fontSize: 12 },
-
-    sectionTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, marginBottom: Spacing.md },
-    missingDataBanner: {
-        flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-        backgroundColor: '#fffbeb', borderRadius: Radius.sm,
-        padding: Spacing.sm, marginBottom: Spacing.md,
-    },
-    missingDataText: { fontSize: 12, color: Colors.warning, flex: 1 },
-
-    flagItem: {
-        flexDirection: 'row', marginBottom: Spacing.sm,
-        alignItems: 'flex-start', padding: Spacing.sm, borderRadius: Radius.sm,
-    },
-    flagItemRed: { backgroundColor: '#fff5f5' },
-    flagItemGreen: { backgroundColor: '#f0fdf4' },
-    flagText: { marginLeft: Spacing.sm, flex: 1 },
-    flagTitle: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
-    flagDesc: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
-
-    table: { borderRadius: Radius.sm, overflow: 'hidden' },
-    tableRow: {
-        flexDirection: 'row', alignItems: 'center',
-        paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border,
-    },
-    levelDot: { width: 8, height: 8, borderRadius: 4, marginRight: Spacing.sm },
-    tableLabel: { flex: 1, fontSize: 14, color: Colors.textSecondary },
-    tableValue: { fontSize: 14, fontWeight: '700' },
-
-    ingredientsText: {
-        fontSize: 13, color: Colors.textSecondary, lineHeight: 20,
-    },
-    ingredientsPhoto: {
-        width: '100%', height: 220, borderRadius: Radius.md,
-        backgroundColor: Colors.background, marginBottom: Spacing.sm,
-    },
-    snapButton: {
-        flexDirection: 'row', alignItems: 'center',
-        backgroundColor: Colors.primaryLight, borderRadius: Radius.md,
-        padding: Spacing.md, borderWidth: 1.5, borderColor: Colors.primary,
-        borderStyle: 'dashed',
-    },
-    snapButtonTitle: { fontSize: 15, fontWeight: '600', color: Colors.primary },
-    snapButtonSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-    reshootButton: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-        gap: Spacing.xs, paddingVertical: Spacing.sm,
-    },
-    reshootText: { fontSize: 14, color: Colors.primary, fontWeight: '600' },
-
-    fab: {
-        position: 'absolute', bottom: Spacing.xl, alignSelf: 'center',
-        backgroundColor: Colors.primary, flexDirection: 'row',
-        alignItems: 'center', paddingVertical: Spacing.md,
-        paddingHorizontal: Spacing.xl, borderRadius: Radius.full,
-        ...Shadow.md, gap: Spacing.sm,
-    },
-    fabText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    modalContent: { backgroundColor: Colors.card, borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl, height: '80%', padding: Spacing.lg },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.lg },
+    modalTitle: { fontSize: 22, fontWeight: '800' },
+    toggleContainer: { flexDirection: 'row', backgroundColor: '#f1f2f6', borderRadius: Radius.md, padding: 4, marginBottom: Spacing.lg },
+    toggleBtn: { flex: 1, paddingVertical: 8, alignItems: 'center' },
+    toggleBtnActive: { backgroundColor: '#fff', borderRadius: Radius.sm, ...Shadow.sm },
+    toggleBtnText: { fontWeight: '600', color: Colors.textMuted },
+    toggleBtnTextActive: { color: Colors.textPrimary },
+    legend: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, marginBottom: Spacing.lg },
+    legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    legendDot: { width: 10, height: 10, borderRadius: 5 },
+    legendText: { fontSize: 12, color: Colors.textSecondary },
+    modalTable: { flex: 1 },
+    tableHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.sm },
+    tableHeaderText: { fontSize: 14, fontWeight: '700', color: Colors.textMuted },
 });

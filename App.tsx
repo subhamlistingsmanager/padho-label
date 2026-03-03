@@ -9,6 +9,7 @@ import ResultScreen from './src/screens/ResultScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import IngredientsSnap from './src/screens/IngredientsSnap';
+import ChatScreen from './src/screens/ChatScreen';
 import { View, TouchableOpacity } from 'react-native';
 import { Settings, History } from 'lucide-react-native';
 import { RootStackParamList } from './src/types';
@@ -51,6 +52,7 @@ export default function App() {
           component={IngredientsSnap}
           options={{ title: 'Snap Ingredients', headerTransparent: true, headerTintColor: '#fff' }}
         />
+        <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'AI Assistant' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
