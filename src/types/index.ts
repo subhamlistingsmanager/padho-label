@@ -22,6 +22,8 @@ export type Product = {
     ingredients?: string;
     ingredientsImageUri?: string;
     scannedAt?: number; // timestamp
+    category?: 'food' | 'beauty';
+    allergens?: string;
 };
 
 export type RootStackParamList = {
@@ -32,4 +34,5 @@ export type RootStackParamList = {
     Settings: undefined;
     IngredientsSnap: { product: Product };
     Chat: { product: Product };
+    Leaderboard: { category?: 'food' | 'beauty'; subCategory?: string } | undefined;
 };

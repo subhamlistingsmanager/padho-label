@@ -10,6 +10,7 @@ import HistoryScreen from './src/screens/HistoryScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import IngredientsSnap from './src/screens/IngredientsSnap';
 import ChatScreen from './src/screens/ChatScreen';
+import LeaderboardScreen from './src/screens/LeaderboardScreen';
 import { View, TouchableOpacity } from 'react-native';
 import { Settings, History } from 'lucide-react-native';
 import { RootStackParamList } from './src/types';
@@ -20,7 +21,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
   return (
     <NavigationContainer>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
       <Stack.Navigator
         initialRouteName="Home"
         screenOptions={({ navigation }) => ({
@@ -42,9 +43,9 @@ export default function App() {
           headerTitleStyle: { fontWeight: 'bold' },
         })}
       >
-        <Stack.Screen name="Home" component={HomeScanScreen} options={{ title: 'Padho Label' }} />
+        <Stack.Screen name="Home" component={HomeScanScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Scan" component={ScanScreen} options={{ title: 'Scan Barcode' }} />
-        <Stack.Screen name="Result" component={ResultScreen} options={{ title: 'Product Details' }} />
+        <Stack.Screen name="Result" component={ResultScreen} options={{ headerShown: false }} />
         <Stack.Screen name="History" component={HistoryScreen} options={{ title: 'History' }} />
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
         <Stack.Screen
@@ -53,6 +54,7 @@ export default function App() {
           options={{ title: 'Snap Ingredients', headerTransparent: true, headerTintColor: '#fff' }}
         />
         <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'AI Assistant' }} />
+        <Stack.Screen name="Leaderboard" component={LeaderboardScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

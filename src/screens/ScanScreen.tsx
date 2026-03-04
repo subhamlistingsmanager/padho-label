@@ -256,8 +256,8 @@ const styles = StyleSheet.create({
     },
     loadingFrame: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     retryLabel: { color: Colors.primary, fontSize: 12, fontWeight: '600', marginTop: 8 },
-    overlayBottom: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'flex-start', paddingTop: Spacing.xl },
-    hint: { color: 'rgba(255,255,255,0.75)', fontSize: 14, fontWeight: '500', textAlign: 'center' },
+    overlayBottom: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'flex-start', paddingTop: 40 },
+    hint: { color: '#fff', fontSize: 16, fontWeight: '600', textAlign: 'center', backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 20, paddingVertical: 10, borderRadius: Radius.full },
     errorBanner: {
         position: 'absolute', bottom: 0, left: 0, right: 0,
         backgroundColor: Colors.danger, flexDirection: 'row',

@@ -1,42 +1,44 @@
 export const Colors = {
-    // Brand
-    primary: '#00b894',
-    primaryDark: '#00916a',
-    primaryLight: '#e8f8f4',
+    // Brand (Indian Inspired / Clean)
+    primary: '#FF9933', // Saffron
+    primaryDark: '#E68A2E',
+    primaryLight: '#FFF4E6',
 
-    // Grades
-    gradeA: '#1b5e20',
-    gradeB: '#4caf50',
-    gradeC: '#fbc02d',
-    gradeD: '#f57c00',
-    gradeE: '#d32f2f',
+    accent: '#138808',  // India Green for healthy items
 
-    // Neutrals
-    background: '#f8f9fa',
-    card: '#ffffff',
-    border: '#f1f2f6',
-    divider: '#e9ecef',
+    // Grades (Enhanced contrast)
+    gradeA: '#1B5E20',
+    gradeB: '#4CAF50',
+    gradeC: '#FFC107',
+    gradeD: '#FF9800',
+    gradeE: '#D32F2F',
+
+    // Neutrals (White & Cream)
+    background: '#FEF9E7', // Cream
+    card: '#FFFFFF',
+    border: '#EAECEE',
+    divider: '#F2F4F4',
 
     // Text
-    textPrimary: '#2d3436',
-    textSecondary: '#636e72',
-    textMuted: '#b2bec3',
+    textPrimary: '#1C2833',
+    textSecondary: '#566573',
+    textMuted: '#ABB2B9',
 
     // Semantic
-    danger: '#d32f2f',
-    success: '#1b5e20',
-    warning: '#f57c00',
-    info: '#0984e3',
+    danger: '#E74C3C',
+    success: '#27AE60',
+    warning: '#F39C12',
+    info: '#3498DB',
 
-    // Status Dots (Nutrient Analysis)
-    statusPositive: '#4caf50',
-    statusNegative: '#f44336',
-    statusFair: '#ff9800',
-    statusLow: '#b2bec3',
+    // Status Dots (Nutrient Analysis - Matching screenshot colors)
+    statusPositive: '#2E7D32', // Deep green
+    statusNegative: '#D32F2F', // Deep red
+    statusFair: '#F57C00',     // Deep orange
+    statusLow: '#90A4AE',      // Muted grey
 
-    // Chat
-    chatBubbleUser: '#6c5ce7',
-    chatBubbleBot: '#f1f2f6',
+    // UI Elements
+    pillBackground: '#F0F3F4',
+    pillText: '#566573',
 };
 
 export const Typography = {
@@ -96,4 +98,4 @@ export const Shadow = {
     },
 };
 
-export const APP_VERSION = '1.0.5';
+export const APP_VERSION = '1.1.0';
