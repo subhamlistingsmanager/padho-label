@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
     progressDotActive: { backgroundColor: Colors.primary, width: 20 },
     progressDotDone: { backgroundColor: Colors.primary + '60' },
 
-    slideTrack: { flexDirection: 'row', width: TOTAL_STEPS * width, height: '100%' },
+    slideTrack: { flexDirection: 'row', width: TOTAL_STEPS * width, flex: 1 },
     stepContainer: { width, paddingHorizontal: Spacing.lg, paddingBottom: 20 },
 
     heroIcon: { alignItems: 'center', marginTop: 20, marginBottom: 20 },
