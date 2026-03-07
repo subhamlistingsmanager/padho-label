@@ -3,11 +3,11 @@ name: 🚀 Android — Build & Submit to Play Store
 on:
   push:
     branches: [master]
-  workflow_dispatch:         # allow manual trigger from GitHub UI
+  workflow_dispatch: # allow manual trigger from GitHub UI
 
 concurrency:
   group: android-release
-  cancel-in-progress: true  # cancel any in-progress build if a new push arrives
+  cancel-in-progress: true # cancel any in-progress build if a new push arrives
 
 jobs:
   build-and-submit:
@@ -24,12 +24,12 @@ jobs:
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       # ── npm dependencies ──────────────────────────────────────────────────
       - name: Install npm dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       # ── EAS CLI ───────────────────────────────────────────────────────────
       - name: Install EAS CLI
