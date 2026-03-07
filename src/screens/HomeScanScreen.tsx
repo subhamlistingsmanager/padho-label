@@ -7,7 +7,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, Product } from '../types';
 import {
     Camera, Search, ChevronRight, Lightbulb, Heart, Award,
-    Apple, Sparkles, ShoppingBag, Salad, Coffee, Leaf, Star
+    Apple, Sparkles, ShoppingBag, Salad, Coffee, Leaf, Star,
+    Flame, Package
 } from 'lucide-react-native';
 import { Colors, Spacing, Radius, Shadow, Typography } from '../theme';
 import { getHistory } from '../services/history';
