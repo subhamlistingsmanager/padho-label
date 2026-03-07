@@ -1,113 +1,141 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
     View, Text, StyleSheet, TextInput, ScrollView,
-    TouchableOpacity, KeyboardAvoidingView, Platform,
+    TouchableOpacity, KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
-import { Colors, Spacing, Radius, Shadow, Typography } from '../theme';
-import { Send, User, Bot, ArrowLeft } from 'lucide-react-native';
+import { Colors, Spacing, Radius, Shadow } from '../theme';
+import { Send, ArrowLeft, Sparkles } from 'lucide-react-native';
 import { sendMessageToAI, ChatMessage } from '../services/chatService';
+import { getUserProfile, getHealthConstraints } from '../services/userProfileService';
+import { UserProfile, HealthConstraints } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
 
 export default function ChatScreen({ route, navigation }: Props) {
     const { product } = route.params;
-    const [messages, setMessages] = useState<ChatMessage[]>([
-        { role: 'model', text: `Hi! I'm your Padho Label assistant. I've analyzed **${product.name}**. Ask me anything about its ingredients or health impact!` }
-    ]);
+    const [profile, setProfile] = useState<UserProfile | null>(null);
+    const [constraints, setConstraints] = useState<HealthConstraints | null>(null);
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
-    const scrollViewRef = useRef<ScrollView>(null);
+    const scrollRef = useRef<ScrollView>(null);
 
-    const contextString = `
-        Product: ${product.name}
-        Brand: ${product.brand}
-        Nutrition (per 100g): ${JSON.stringify(product.nutrition)}
-        Ingredients: ${product.ingredients}
-    `;
+    useEffect(() => {
+        getUserProfile().then(p => {
+            setProfile(p);
+            const greeting = p
+                ? `Hi ${p.name}! 👋 I'm TIA, your Padho Label nutrition coach. I've analysed **${product.name}** for you. Ask me anything about ingredients, health impact, or whether it suits your goals!`
+                : `Hi! 👋 I'm TIA, your Padho Label nutrition coach. I've analysed **${product.name}**. What would you like to know?`;
+            setMessages([{ role: 'model', text: greeting }]);
+        });
+        getHealthConstraints().then(setConstraints);
+    }, [product.name]);
 
-    const handleSend = async () => {
+    const handleSend = useCallback(async () => {
         if (!input.trim() || loading) return;
-
-        const userMsg = input.trim();
+        const userText = input.trim();
         setInput('');
-        setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+        const newMessages: ChatMessage[] = [...messages, { role: 'user', text: userText }];
+        setMessages(newMessages);
         setLoading(true);
-
-        const aiResponse = await sendMessageToAI(userMsg, contextString);
-        setMessages(prev => [...prev, { role: 'model', text: aiResponse }]);
+        const response = await sendMessageToAI(userText, product, newMessages.slice(1), profile, constraints);
+        setMessages(prev => [...prev, { role: 'model', text: response }]);
         setLoading(false);
-    };
+    }, [input, loading, messages, product, profile, constraints]);
+
+    useEffect(() => {
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    }, [messages]);
+
+    const isBeauty = product.category === 'beauty';
+    const primaryColor = isBeauty ? '#E91E63' : Colors.primary;
+
+    const suggestedQuestions = [
+        profile?.conditions.includes('diabetes') ? 'Is this safe for a diabetic?' : 'Is this a healthy choice?',
+        'What are the high-risk additives?',
+        'How much should I eat per day?',
+        profile?.goals.includes('weight_loss') ? 'Will this help me lose weight?' : 'What nutrients does this provide?',
+    ];
 
     return (
-        <KeyboardAvoidingView
-            style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={100}
-        >
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <ArrowLeft color={Colors.textPrimary} size={24} />
+        <KeyboardAvoidingView style={styles.wrapper} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
+            {/* Header */}
+            <View style={[styles.header, { backgroundColor: primaryColor }]}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn}>
+                    <ArrowLeft color="#fff" size={24} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>AI Assistant</Text>
+                <View style={styles.avatarCircle}>
+                    <Sparkles color="#fff" size={20} />
+                </View>
+                <View style={{ flex: 1 }}>
+                    <Text style={styles.headerName}>TIA – Nutrition Coach</Text>
+                    <Text style={styles.headerSub}>Analysing: {product.name}</Text>
+                </View>
             </View>
 
+            {/* Messages */}
             <ScrollView
-                ref={scrollViewRef}
-                style={styles.messageList}
-                contentContainerStyle={{ padding: Spacing.md }}
-                onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+                ref={scrollRef}
+                style={{ flex: 1 }}
+                contentContainerStyle={{ padding: Spacing.md, paddingBottom: 20 }}
+                showsVerticalScrollIndicator={false}
             >
                 {messages.map((msg, i) => (
-                    <View
-                        key={i}
-                        style={[
-                            styles.messageRow,
-                            msg.role === 'user' ? styles.rowUser : styles.rowBot
-                        ]}
-                    >
+                    <View key={i} style={[styles.msgRow, msg.role === 'user' ? styles.rowUser : styles.rowBot]}>
                         {msg.role === 'model' && (
-                            <View style={[styles.avatar, { backgroundColor: Colors.primaryLight }]}>
-                                <Bot color={Colors.primary} size={16} />
+                            <View style={[styles.avatar, { backgroundColor: primaryColor }]}>
+                                <Sparkles color="#fff" size={14} />
                             </View>
                         )}
-                        <View
-                            style={[
-                                styles.bubble,
-                                msg.role === 'user' ? styles.bubbleUser : styles.bubbleBot
-                            ]}
-                        >
-                            <Text style={[
-                                styles.messageText,
-                                msg.role === 'user' ? styles.textUser : styles.textBot
-                            ]}>
-                                {msg.text}
-                            </Text>
+                        <View style={[styles.bubble, msg.role === 'user' ? [styles.bubbleUser, { backgroundColor: primaryColor }] : styles.bubbleBot]}>
+                            <Text style={[styles.msgText, msg.role === 'user' ? styles.msgTextUser : styles.msgTextBot]}>{msg.text}</Text>
                         </View>
-                        {msg.role === 'user' && (
-                            <View style={[styles.avatar, { backgroundColor: Colors.chatBubbleUser }]}>
-                                <User color="#fff" size={16} />
-                            </View>
-                        )}
                     </View>
                 ))}
+
+                {loading && (
+                    <View style={styles.rowBot}>
+                        <View style={[styles.avatar, { backgroundColor: primaryColor }]}><Sparkles color="#fff" size={14} /></View>
+                        <View style={styles.typingDots}>
+                            <Text style={styles.typingText}>TIA is thinking…</Text>
+                        </View>
+                    </View>
+                )}
+
+                {/* Suggested questions (shown only after first greeting) */}
+                {messages.length === 1 && (
+                    <View style={styles.suggestedRow}>
+                        {suggestedQuestions.map((q, i) => (
+                            <TouchableOpacity key={i} style={[styles.suggestionChip, { borderColor: primaryColor + '60' }]} onPress={() => { setInput(q); }}>
+                                <Text style={[styles.suggestionText, { color: primaryColor }]}>{q}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
             </ScrollView>
 
-            <View style={styles.inputArea}>
+            {/* Input */}
+            <View style={styles.inputBar}>
                 <TextInput
-                    style={styles.input}
-                    placeholder="Type your question..."
+                    style={styles.inputField}
+                    placeholder="Ask TIA anything…"
+                    placeholderTextColor={Colors.textMuted}
                     value={input}
                     onChangeText={setInput}
                     multiline
+                    maxLength={500}
+                    returnKeyType="send"
+                    onSubmitEditing={handleSend}
+                    blurOnSubmit
                 />
                 <TouchableOpacity
-                    style={[styles.sendButton, (!input.trim() || loading) && styles.sendButtonDisabled]}
+                    style={[styles.sendBtn, { backgroundColor: primaryColor }, (!input.trim() || loading) && { opacity: 0.4 }]}
                     onPress={handleSend}
                     disabled={!input.trim() || loading}
                 >
-                    <Send color="#fff" size={20} />
+                    <Send color="#fff" size={18} />
                 </TouchableOpacity>
             </View>
         </KeyboardAvoidingView>
@@ -115,40 +143,32 @@ export default function ChatScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: Colors.background },
-    header: {
-        flexDirection: 'row', alignItems: 'center',
-        padding: Spacing.md, backgroundColor: Colors.card,
-        ...Shadow.sm, borderBottomWidth: 1, borderBottomColor: Colors.border,
-    },
-    backButton: { marginRight: Spacing.md },
-    headerTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
-    messageList: { flex: 1 },
-    messageRow: { flexDirection: 'row', marginBottom: Spacing.md, alignItems: 'flex-end' },
+    wrapper: { flex: 1, backgroundColor: Colors.background },
+    header: { flexDirection: 'row', alignItems: 'center', paddingTop: 44, paddingBottom: 14, paddingHorizontal: Spacing.md, gap: 10 },
+    headerBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    avatarCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' },
+    headerName: { fontSize: 16, fontWeight: '800', color: '#fff' },
+    headerSub: { fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 1 },
+
+    msgRow: { flexDirection: 'row', marginBottom: 12, alignItems: 'flex-end', gap: 8 },
     rowBot: { justifyContent: 'flex-start' },
     rowUser: { justifyContent: 'flex-end' },
-    avatar: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginHorizontal: Spacing.xs },
-    bubble: { maxWidth: '75%', padding: Spacing.md, borderRadius: Radius.lg },
-    bubbleBot: { backgroundColor: Colors.chatBubbleBot, borderBottomLeftRadius: 4 },
-    bubbleUser: { backgroundColor: Colors.chatBubbleUser, borderBottomRightRadius: 4 },
-    messageText: { fontSize: 15, lineHeight: 22 },
-    textUser: { color: '#fff' },
-    textBot: { color: Colors.textPrimary },
-    inputArea: {
-        flexDirection: 'row', padding: Spacing.md,
-        backgroundColor: Colors.card, borderTopWidth: 1, borderTopColor: Colors.border,
-        alignItems: 'flex-end',
-    },
-    input: {
-        flex: 1, backgroundColor: Colors.background,
-        borderRadius: Radius.md, paddingHorizontal: Spacing.md,
-        paddingTop: 10, paddingBottom: 10, fontSize: 15,
-        maxHeight: 100,
-    },
-    sendButton: {
-        width: 44, height: 44, borderRadius: 22,
-        backgroundColor: Colors.primary, marginLeft: Spacing.md,
-        alignItems: 'center', justifyContent: 'center',
-    },
-    sendButtonDisabled: { opacity: 0.5 },
+    avatar: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+    bubble: { maxWidth: '78%', padding: 12, borderRadius: 18 },
+    bubbleBot: { backgroundColor: '#fff', borderBottomLeftRadius: 4, ...Shadow.sm },
+    bubbleUser: { borderBottomRightRadius: 4 },
+    msgText: { fontSize: 14, lineHeight: 21 },
+    msgTextBot: { color: Colors.textPrimary },
+    msgTextUser: { color: '#fff' },
+
+    typingDots: { backgroundColor: '#fff', borderRadius: 18, padding: 12, ...Shadow.sm },
+    typingText: { fontSize: 13, color: Colors.textMuted, fontStyle: 'italic' },
+
+    suggestedRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+    suggestionChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.full, borderWidth: 1, backgroundColor: '#fff' },
+    suggestionText: { fontSize: 12, fontWeight: '700' },
+
+    inputBar: { flexDirection: 'row', alignItems: 'flex-end', padding: Spacing.md, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: Colors.border, gap: 10 },
+    inputField: { flex: 1, backgroundColor: Colors.background, borderRadius: Radius.lg, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: Colors.textPrimary, maxHeight: 100 },
+    sendBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
 });

@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
+import { View, Text } from 'react-native';
+import { Home, Search, Camera, Package, User } from 'lucide-react-native';
 
 import HomeScanScreen from './src/screens/HomeScanScreen';
 import ScanScreen from './src/screens/ScanScreen';
@@ -11,50 +14,114 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import IngredientsSnap from './src/screens/IngredientsSnap';
 import ChatScreen from './src/screens/ChatScreen';
 import LeaderboardScreen from './src/screens/LeaderboardScreen';
-import { View, TouchableOpacity } from 'react-native';
-import { Settings, History } from 'lucide-react-native';
+import OnboardingScreen from './src/screens/OnboardingScreen';
+import PantryScreen from './src/screens/PantryScreen';
+import ChallengesScreen from './src/screens/ChallengesScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
+
 import { RootStackParamList } from './src/types';
 import { Colors } from './src/theme';
+import { isOnboardingDone } from './src/services/userProfileService';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator();
+
+// ─── Bottom Tab Navigator ──────────────────────────────────────────────────
+
+function MainTabs() {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.textMuted,
+        tabBarStyle: {
+          backgroundColor: '#fff',
+          borderTopWidth: 1,
+          borderTopColor: Colors.border,
+          paddingBottom: 8,
+          paddingTop: 6,
+          height: 64,
+        },
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '700',
+          marginTop: 2,
+        },
+        tabBarIcon: ({ color, size }) => {
+          if (route.name === 'Home') return <Home color={color} size={22} />;
+          if (route.name === 'Discover') return <Search color={color} size={22} />;
+          if (route.name === 'Scan') return <Camera color={color} size={22} />;
+          if (route.name === 'Pantry') return <Package color={color} size={22} />;
+          if (route.name === 'Profile') return <User color={color} size={22} />;
+          return <View />;
+        },
+      })}
+    >
+      <Tab.Screen name="Home" component={HomeScanScreen} options={{ tabBarLabel: 'Home' }} />
+      <Tab.Screen name="Discover" component={LeaderboardScreen} options={{ tabBarLabel: 'Discover' }} />
+      <Tab.Screen name="Scan" component={ScanScreen} options={{
+        tabBarLabel: 'Scan',
+        tabBarIcon: ({ color }) => (
+          <View style={{
+            backgroundColor: Colors.primary,
+            width: 52, height: 52, borderRadius: 26,
+            alignItems: 'center', justifyContent: 'center',
+            marginTop: -16,
+            shadowColor: Colors.primary,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.4,
+            shadowRadius: 8,
+            elevation: 8,
+          }}>
+            <Camera color="#fff" size={26} />
+          </View>
+        ),
+        tabBarLabel: () => null,
+      }} />
+      <Tab.Screen name="Pantry" component={PantryScreen} options={{ tabBarLabel: 'Pantry' }} />
+      <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarLabel: 'Profile' }} />
+    </Tab.Navigator>
+  );
+}
+
+// ─── Root Stack (Modals + Onboarding) ─────────────────────────────────────
 
 export default function App() {
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    isOnboardingDone().then(done => {
+      setShowOnboarding(!done);
+      setOnboardingChecked(true);
+    });
+  }, []);
+
+  if (!onboardingChecked) return null; // Splash-style hold
+
   return (
     <NavigationContainer>
       <StatusBar style="light" />
       <Stack.Navigator
-        initialRouteName="Home"
-        screenOptions={({ navigation }) => ({
-          headerRight: () => (
-            <View style={{ flexDirection: 'row' }}>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('History')}
-                style={{ marginRight: 15 }}
-              >
-                <History color={Colors.textPrimary} size={24} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
-                <Settings color={Colors.textPrimary} size={24} />
-              </TouchableOpacity>
-            </View>
-          ),
-          headerStyle: { backgroundColor: '#fff' },
-          headerShadowVisible: false,
-          headerTitleStyle: { fontWeight: 'bold' },
-        })}
+        initialRouteName={showOnboarding ? 'Onboarding' : 'MainTabs'}
+        screenOptions={{ headerShown: false }}
       >
+        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+        <Stack.Screen name="MainTabs" component={MainTabs} />
+        {/* Modal stack screens */}
+        <Stack.Screen name="Result" component={ResultScreen} />
+        <Stack.Screen name="Chat" component={ChatScreen} />
+        <Stack.Screen name="IngredientsSnap" component={IngredientsSnap} options={{ animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
+        <Stack.Screen name="History" component={HistoryScreen} options={{ headerShown: true, title: 'Scan History', headerStyle: { backgroundColor: '#fff' }, headerTintColor: Colors.textPrimary }} />
+        <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: true, title: 'Settings', headerStyle: { backgroundColor: '#fff' }, headerTintColor: Colors.textPrimary }} />
+        <Stack.Screen name="Challenges" component={ChallengesScreen} />
+        {/* Aliases for tab screens that may be navigated to directly */}
         <Stack.Screen name="Home" component={HomeScanScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Scan" component={ScanScreen} options={{ title: 'Scan Barcode' }} />
-        <Stack.Screen name="Result" component={ResultScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="History" component={HistoryScreen} options={{ title: 'History' }} />
-        <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
-        <Stack.Screen
-          name="IngredientsSnap"
-          component={IngredientsSnap}
-          options={{ title: 'Snap Ingredients', headerTransparent: true, headerTintColor: '#fff' }}
-        />
-        <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'AI Assistant' }} />
-        <Stack.Screen name="Leaderboard" component={LeaderboardScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Scan" component={ScanScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Pantry" component={PantryScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

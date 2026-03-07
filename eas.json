@@ -8,15 +8,24 @@
             "distribution": "internal"
         },
         "preview": {
-            "distribution": "internal"
+            "distribution": "internal",
+            "android": {
+                "buildType": "apk"
+            }
         },
-        "production": {}
+        "production": {
+            "android": {
+                "buildType": "app-bundle"
+            }
+        }
     },
     "submit": {
         "production": {
             "android": {
                 "serviceAccountKeyPath": "./pc-api-key.json",
-                "releaseStatus": "draft"
+                "track": "internal",
+                "releaseStatus": "draft",
+                "changesNotSentForReview": false
             }
         }
     }
