@@ -57,6 +57,8 @@ export default function HomeScanScreen({ navigation }: Props) {
     const slideAnim = useRef(new Animated.Value(30)).current;
 
     const [userName, setUserName] = useState('');
+    const [points, setPoints] = useState(0);
+    const [streak, setStreak] = useState(0);
 
     useEffect(() => {
         loadData();
@@ -72,13 +74,17 @@ export default function HomeScanScreen({ navigation }: Props) {
         setTopFood(getTopBySubCategory('food', 'All', 3));
         setTopBeauty(getTopBySubCategory('beauty', 'All', 3));
 
-        const [profile, favs] = await Promise.all([
+        const [profile, favs, pts, str] = await Promise.all([
             import('../services/userProfileService').then(m => m.getUserProfile()),
-            getFavorites()
+            getFavorites(),
+            import('../services/pointsService').then(m => m.getTotalPoints()),
+            import('../services/pointsService').then(m => m.getStreak()),
         ]);
 
         if (profile?.name) setUserName(profile.name);
         setFavBarcodes(new Set(favs.map(f => f.barcode)));
+        setPoints(pts);
+        setStreak(str.current);
     };
 
     const getGreeting = () => {
@@ -221,11 +227,28 @@ export default function HomeScanScreen({ navigation }: Props) {
                 <>
                     {/* ── Hero ── */}
                     <View style={styles.hero}>
+                        <View style={styles.brandRow}>
+                            <Salad color="#fff" size={20} />
+                            <Text style={styles.brandText}>Padho Label</Text>
+                        </View>
                         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
                             <Text style={styles.heroGreeting}>{getGreeting()}</Text>
                             <Text style={styles.heroTitle}>Know What You Use</Text>
-                            <Text style={styles.heroTagline}>Scan any product for an instant health & safety report.</Text>
+                            <Text style={styles.heroTagline}>Scan any product for an instant health report.</Text>
                         </Animated.View>
+
+                        {/* Stats Bar */}
+                        <View style={styles.statsBar}>
+                            <TouchableOpacity style={styles.statItem} onPress={() => navigation.navigate('Challenges')}>
+                                <Flame color="#FF6B35" size={16} fill={streak > 0 ? "#FF6B35" : "transparent"} />
+                                <Text style={styles.statLabel}>{streak} Day Streak</Text>
+                            </TouchableOpacity>
+                            <View style={styles.statDivider} />
+                            <TouchableOpacity style={styles.statItem} onPress={() => navigation.navigate('Challenges')}>
+                                <Sparkles color="#FFD700" size={16} />
+                                <Text style={styles.statLabel}>{points} Points</Text>
+                            </TouchableOpacity>
+                        </View>
 
                         {/* Scan CTA */}
                         <Animated.View style={[styles.scanHeroCTA, { opacity: fadeAnim }]}>
@@ -238,6 +261,22 @@ export default function HomeScanScreen({ navigation }: Props) {
                                 <Text style={styles.scanHeroBtnText}>Scan a Product</Text>
                             </TouchableOpacity>
                         </Animated.View>
+                    </View>
+
+                    {/* Quick Shortcuts */}
+                    <View style={styles.shortcutsRow}>
+                        <TouchableOpacity style={styles.shortcutBtn} onPress={() => navigation.navigate('Pantry')}>
+                            <View style={[styles.shortcutIcon, { backgroundColor: '#E8F5E9' }]}><Package color={Colors.primary} size={22} /></View>
+                            <Text style={styles.shortcutText}>My Pantry</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.shortcutBtn} onPress={() => navigation.navigate('Chat')}>
+                            <View style={[styles.shortcutIcon, { backgroundColor: '#E3F2FD' }]}><Star color={Colors.info} size={22} /></View>
+                            <Text style={styles.shortcutText}>TIA Coach</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.shortcutBtn} onPress={() => navigation.navigate('Challenges')}>
+                            <View style={[styles.shortcutIcon, { backgroundColor: '#FFF3E0' }]}><Award color={Colors.warning} size={22} /></View>
+                            <Text style={styles.shortcutText}>Challenges</Text>
+                        </TouchableOpacity>
                     </View>
 
                     {/* ── Search Bar ── */}
@@ -277,13 +316,25 @@ export default function HomeScanScreen({ navigation }: Props) {
                     )}
 
                     {/* ── Recent Scans header ── */}
-                    {recentScans.length > 0 && (
+                    {recentScans.length > 0 ? (
                         <View style={styles.sectionHeader}>
                             <Text style={styles.sectionTitle}>Your Recent Scans</Text>
                             <TouchableOpacity onPress={() => navigation.navigate('History')}>
                                 <Text style={styles.seeAll}>View All</Text>
                             </TouchableOpacity>
                         </View>
+                    ) : (
+                        <TouchableOpacity
+                            style={styles.emptyHistoryCard}
+                            onPress={() => navigation.navigate('Scan')}
+                        >
+                            <View style={styles.emptyCircle}><Camera color={Colors.primary} size={24} /></View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.emptyTitle}>Start Your Health Journey</Text>
+                                <Text style={styles.emptyDesc}>Scan your first product to see the magic here.</Text>
+                            </View>
+                            <ChevronRight color={Colors.textMuted} size={20} />
+                        </TouchableOpacity>
                     )}
                 </>
             )}
@@ -327,16 +378,38 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.lg,
     },
     heroGreeting: { fontSize: 14, color: 'rgba(255,255,255,0.8)', fontWeight: '600', marginBottom: 4 },
-    heroTitle: { fontSize: 28, fontWeight: '900', color: '#fff', letterSpacing: -0.5 },
-    heroTagline: { fontSize: 14, color: 'rgba(255,255,255,0.85)', marginTop: 6, lineHeight: 20 },
-    scanHeroCTA: { marginTop: 20 },
+    heroTitle: { fontSize: 26, fontWeight: '900', color: '#fff', letterSpacing: -0.5 },
+    heroTagline: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 4, lineHeight: 18 },
+    brandRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 },
+    brandText: { color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 0.5 },
+    statsBar: {
+        flexDirection: 'row', alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        borderRadius: Radius.md, marginTop: 16, padding: 10,
+    },
+    statItem: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+    statLabel: { color: '#fff', fontSize: 12, fontWeight: '700' },
+    statDivider: { width: 1, height: 16, backgroundColor: 'rgba(255,255,255,0.3)' },
+    scanHeroCTA: { marginTop: 16 },
     scanHeroBtn: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        backgroundColor: '#fff',
         borderRadius: Radius.full, paddingVertical: 14, paddingHorizontal: 28,
-        borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.5)',
+        ...Shadow.md,
     },
-    scanHeroBtnText: { color: '#fff', fontSize: 17, fontWeight: '800' },
+    scanHeroBtnText: { color: Colors.primary, fontSize: 17, fontWeight: '800' },
+
+    // Quick Shortcuts
+    shortcutsRow: {
+        flexDirection: 'row', justifyContent: 'space-between',
+        paddingHorizontal: Spacing.md, gap: 10, marginTop: Spacing.md,
+    },
+    shortcutBtn: {
+        flex: 1, backgroundColor: '#fff', borderRadius: Radius.lg,
+        padding: 12, alignItems: 'center', gap: 8, ...Shadow.sm,
+    },
+    shortcutIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+    shortcutText: { fontSize: 11, fontWeight: '800', color: Colors.textPrimary },
 
     // Search
     searchRow: {
@@ -472,4 +545,15 @@ const styles = StyleSheet.create({
     recentInfo: { flex: 1 },
     recentName: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
     recentBrand: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+
+    // Empty state
+    emptyHistoryCard: {
+        flexDirection: 'row', alignItems: 'center', gap: 14,
+        backgroundColor: '#fff', marginHorizontal: Spacing.md,
+        padding: Spacing.md, borderRadius: Radius.lg, ...Shadow.sm,
+        marginTop: Spacing.sm,
+    },
+    emptyCircle: { width: 48, height: 48, borderRadius: 24, backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
+    emptyTitle: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary },
+    emptyDesc: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
 });
