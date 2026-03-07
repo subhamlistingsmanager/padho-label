@@ -56,6 +56,8 @@ export default function HomeScanScreen({ navigation }: Props) {
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(30)).current;
 
+    const [userName, setUserName] = useState('');
+
     useEffect(() => {
         loadData();
         Animated.parallel([
@@ -69,8 +71,20 @@ export default function HomeScanScreen({ navigation }: Props) {
         setRecentScans(history.slice(0, 3));
         setTopFood(getTopBySubCategory('food', 'All', 3));
         setTopBeauty(getTopBySubCategory('beauty', 'All', 3));
-        const favs = await getFavorites();
+
+        const [profile, favs] = await Promise.all([
+            import('../services/userProfileService').then(m => m.getUserProfile()),
+            getFavorites()
+        ]);
+
+        if (profile?.name) setUserName(profile.name);
         setFavBarcodes(new Set(favs.map(f => f.barcode)));
+    };
+
+    const getGreeting = () => {
+        const hour = new Date().getHours();
+        const base = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+        return `${base}${userName ? ', ' + userName : ''}! 🌟`;
     };
 
     const handleToggleFav = useCallback(async (item: LeaderboardEntry) => {
@@ -208,7 +222,7 @@ export default function HomeScanScreen({ navigation }: Props) {
                     {/* ── Hero ── */}
                     <View style={styles.hero}>
                         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-                            <Text style={styles.heroGreeting}>Good day! 🌟</Text>
+                            <Text style={styles.heroGreeting}>{getGreeting()}</Text>
                             <Text style={styles.heroTitle}>Know What You Use</Text>
                             <Text style={styles.heroTagline}>Scan any product for an instant health & safety report.</Text>
                         </Animated.View>

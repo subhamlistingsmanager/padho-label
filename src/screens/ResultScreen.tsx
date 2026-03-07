@@ -374,10 +374,16 @@ export default function ResultScreen({ route, navigation }: Props) {
                     {TABS.map(tab => (
                         <TouchableOpacity
                             key={tab}
-                            style={[styles.tabItem, activeTab === tab && { borderBottomColor: primaryColor, borderBottomWidth: 2.5 }]}
+                            style={styles.tabItem}
                             onPress={() => setActiveTab(tab)}
                         >
                             <Text style={[styles.tabText, activeTab === tab && { color: primaryColor, fontWeight: '800' }]}>{tab}</Text>
+                            {activeTab === tab && (
+                                <Animated.View
+                                    layout={/* Note: In RN standard Animated this is manual, but for simplicity we use a conditional view with shared style */ undefined}
+                                    style={[styles.tabIndicator, { backgroundColor: primaryColor }]}
+                                />
+                            )}
                         </TouchableOpacity>
                     ))}
                 </ScrollView>
@@ -436,8 +442,9 @@ const styles = StyleSheet.create({
 
     tabBar: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: Colors.border, ...Shadow.sm },
     tabBarContent: { paddingHorizontal: Spacing.sm },
-    tabItem: { paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 2.5, borderBottomColor: 'transparent' },
+    tabItem: { paddingHorizontal: 14, paddingVertical: 12, position: 'relative' },
     tabText: { fontSize: 13, fontWeight: '600', color: Colors.textMuted },
+    tabIndicator: { position: 'absolute', bottom: 0, left: 14, right: 14, height: 2.5, borderRadius: 2 },
 
     // Overview
     scoreCard: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: Radius.xl, padding: Spacing.lg, gap: 16, alignItems: 'center', ...Shadow.md },
