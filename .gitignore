@@ -48,3 +48,4 @@ pc-api-key.json
 .env.local
 .env.*.local
 padho-label-ad29407fddf1.json
+package-lock.json
