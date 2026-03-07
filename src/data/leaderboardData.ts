@@ -138,7 +138,60 @@ export const LEADERBOARD_DATA: LeaderboardEntry[] = [
         reason: 'Extra virgin, high polyphenols, single ingredient'
     },
 
-    // ── FOOD: Noodles ──
+    {
+        barcode: '8901058001096', name: 'Maggi Hot \u0026 Sweet Sauce', brand: 'Nestle',
+        image_url: 'https://m.media-amazon.com/images/I/61Nl5U+bUWL._SL1500_.jpg',
+        grade: 'D', score: 35, category: 'food', subCategory: 'Condiments',
+        reason: 'Very high in added sugar and preservatives'
+    },
+    {
+        barcode: '8901058850024', name: 'Nescafe Classic Coffee', brand: 'Nestle',
+        image_url: 'https://m.media-amazon.com/images/I/61+9F70gR6L._SL1500_.jpg',
+        grade: 'A', score: 92, category: 'food', subCategory: 'Beverages',
+        reason: 'Zero sugar, pure coffee, high antioxidants'
+    },
+    {
+        barcode: '8906001761616', name: 'Lays Magic Masala', brand: 'PepsiCo',
+        image_url: 'https://m.media-amazon.com/images/I/81x1nQ2d20L._SL1500_.jpg',
+        grade: 'E', score: 18, category: 'food', subCategory: 'Snacks',
+        reason: 'High in saturated fat, sodium, and ultra-processed'
+    },
+    {
+        barcode: '8901063141124', name: 'Amul Butter', brand: 'Amul',
+        image_url: 'https://m.media-amazon.com/images/I/61+y2qFw2fL._SL1000_.jpg',
+        grade: 'D', score: 38, category: 'food', subCategory: 'Dairy',
+        reason: 'Extremely high saturated fat and sodium'
+    },
+    {
+        barcode: '8901491101831', name: 'Tata Salt (Vacuum Evaporated)', brand: 'Tata',
+        image_url: 'https://m.media-amazon.com/images/I/61H+Vf5V5XL._SL1500_.jpg',
+        grade: 'C', score: 50, category: 'food', subCategory: 'Condiments',
+        reason: 'Pure sodium chloride, essential in moderation but high risk'
+    },
+    {
+        barcode: '8901712513410', name: 'Dabur Honey (Squeezable)', brand: 'Dabur',
+        image_url: 'https://m.media-amazon.com/images/I/71B9vV7I-hL._SL1500_.jpg',
+        grade: 'B', score: 65, category: 'food', subCategory: 'Condiments',
+        reason: 'Natural sweetener, but high sugar content per serving'
+    },
+    {
+        barcode: '8901131151604', name: 'Bournvita Health Drink', brand: 'Cadbury',
+        image_url: 'https://m.media-amazon.com/images/I/71C79xQY+RL._SL1500_.jpg',
+        grade: 'D', score: 28, category: 'food', subCategory: 'Beverages',
+        reason: 'Very high added sugar (approx 50%), maltodextrin'
+    },
+    {
+        barcode: '8901712041203', name: 'Real Fruit Power Orange', brand: 'Dabur',
+        image_url: 'https://m.media-amazon.com/images/I/71uUOX1pYSL._SL1500_.jpg',
+        grade: 'C', score: 45, category: 'food', subCategory: 'Beverages',
+        reason: 'Fruit concentrate with added sugar and preservatives'
+    },
+    {
+        barcode: '8901207040405', name: 'Parle-G Biscuits', brand: 'Parle',
+        image_url: 'https://m.media-amazon.com/images/I/61U0Mv0KOWL._SL1500_.jpg',
+        grade: 'D', score: 32, category: 'food', subCategory: 'Snacks',
+        reason: 'Refined wheat flour, high sugar, palm oil'
+    },
     {
         barcode: '8901058000109', name: 'Maggi Masala Noodles', brand: 'Nestle',
         image_url: 'https://www.maggi.in/sites/default/files/styles/product_image_400x400/public/2021-02/Product%20Header%20-%20Masala_0.png',

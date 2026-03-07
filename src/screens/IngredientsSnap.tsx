@@ -42,7 +42,7 @@ export default function IngredientsSnap({ route, navigation }: Props) {
     const [statusMsg, setStatusMsg] = useState('');
     const [imageUri, setImageUri] = useState<string | null>(null);
     const [extractedNutrition, setExtractedNutrition] = useState<Partial<NutritionData>>({});
-    const [mergedNutrition, setMergedNutrition] = useState<NutritionData>(product.nutrition);
+    const [mergedNutrition, setMergedNutrition] = useState<NutritionData>(product.nutrition || {});
 
     const handleCapture = async () => {
         if (!cameraRef.current || stage !== 'camera') return;

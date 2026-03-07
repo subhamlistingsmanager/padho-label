@@ -210,7 +210,23 @@ export default function ScanScreen({ navigation }: Props) {
                 ]}>
                     <Text style={styles.errorText}>{errorMsg}</Text>
                     <View style={styles.errorActions}>
-                        {errorType !== 'notfound' && (
+                        {errorType === 'notfound' ? (
+                            <TouchableOpacity
+                                onPress={() => {
+                                    const skeleton = {
+                                        barcode: lastBarcode.current || 'unknown',
+                                        name: 'Unknown Product',
+                                        nutrition: {} as any,
+                                        scannedAt: Date.now(),
+                                    };
+                                    navigation.navigate('IngredientsSnap', { product: skeleton as any });
+                                }}
+                                style={styles.retryBtn}
+                            >
+                                <RefreshCw color="#fff" size={16} />
+                                <Text style={styles.retryBtnText}>Scan Ingredients 📸</Text>
+                            </TouchableOpacity>
+                        ) : (
                             <TouchableOpacity onPress={handleRetry} style={styles.retryBtn}>
                                 <RefreshCw color="#fff" size={16} />
                                 <Text style={styles.retryBtnText}>Retry</Text>
