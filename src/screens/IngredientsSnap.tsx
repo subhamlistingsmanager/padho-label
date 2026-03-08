@@ -126,6 +126,13 @@ export default function IngredientsSnap({ route, navigation }: Props) {
                     <RefreshCw color="#fff" size={18} />
                     <Text style={styles.retryButtonText}>Try Again</Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.retryButton, { backgroundColor: Colors.textMuted, marginTop: 12 }]}
+                    onPress={handleApply}
+                >
+                    <CheckCircle color="#fff" size={18} />
+                    <Text style={styles.retryButtonText}>Save Image Anyway</Text>
+                </TouchableOpacity>
             </View>
         );
     }

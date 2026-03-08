@@ -23,6 +23,10 @@ import { RootStackParamList } from './src/types';
 import { Colors } from './src/theme';
 import { isOnboardingDone } from './src/services/userProfileService';
 
+import { AuthScreen } from './src/screens/AuthScreen';
+import { supabase } from './src/services/supabaseClient';
+import { Session } from '@supabase/supabase-js';
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
 
@@ -90,12 +94,26 @@ function MainTabs() {
 export default function App() {
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
+    // 1. Check onboarding
     isOnboardingDone().then(done => {
       setShowOnboarding(!done);
       setOnboardingChecked(true);
     });
+
+    // 2. Initial Session Check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    // 3. Listen for changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   if (!onboardingChecked) return null; // Splash-style hold
@@ -104,24 +122,30 @@ export default function App() {
     <NavigationContainer>
       <StatusBar style="light" />
       <Stack.Navigator
-        initialRouteName={showOnboarding ? 'Onboarding' : 'MainTabs'}
+        initialRouteName={!session ? 'Auth' : (showOnboarding ? 'Onboarding' : 'MainTabs')}
         screenOptions={{ headerShown: false }}
       >
-        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-        <Stack.Screen name="MainTabs" component={MainTabs} />
-        {/* Modal stack screens */}
-        <Stack.Screen name="Result" component={ResultScreen} />
-        <Stack.Screen name="Chat" component={ChatScreen} />
-        <Stack.Screen name="IngredientsSnap" component={IngredientsSnap} options={{ animation: 'slide_from_bottom' }} />
-        <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
-        <Stack.Screen name="History" component={HistoryScreen} options={{ headerShown: true, title: 'Scan History', headerStyle: { backgroundColor: '#fff' }, headerTintColor: Colors.textPrimary }} />
-        <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: true, title: 'Settings', headerStyle: { backgroundColor: '#fff' }, headerTintColor: Colors.textPrimary }} />
-        <Stack.Screen name="Challenges" component={ChallengesScreen} />
-        {/* Aliases for tab screens that may be navigated to directly */}
-        <Stack.Screen name="Home" component={HomeScanScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Scan" component={ScanScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Pantry" component={PantryScreen} />
-        <Stack.Screen name="Profile" component={ProfileScreen} />
+        {!session ? (
+          <Stack.Screen name="Auth" component={AuthScreen} />
+        ) : (
+          <>
+            <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+            <Stack.Screen name="MainTabs" component={MainTabs} />
+            {/* Modal stack screens */}
+            <Stack.Screen name="Result" component={ResultScreen} />
+            <Stack.Screen name="Chat" component={ChatScreen} />
+            <Stack.Screen name="IngredientsSnap" component={IngredientsSnap} options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
+            <Stack.Screen name="History" component={HistoryScreen} options={{ headerShown: true, title: 'Scan History', headerStyle: { backgroundColor: '#fff' }, headerTintColor: Colors.textPrimary }} />
+            <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: true, title: 'Settings', headerStyle: { backgroundColor: '#fff' }, headerTintColor: Colors.textPrimary }} />
+            <Stack.Screen name="Challenges" component={ChallengesScreen} />
+            {/* Aliases for tab screens that may be navigated to directly */}
+            <Stack.Screen name="Home" component={HomeScanScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Scan" component={ScanScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Pantry" component={PantryScreen} />
+            <Stack.Screen name="Profile" component={ProfileScreen} />
+          </>
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -15,8 +15,9 @@ import { getHistoryCount, clearHistory } from '../services/history';
 import { Colors, Spacing, Radius, Shadow, APP_VERSION } from '../theme';
 import {
     User, Zap, Flame, Trophy, ChevronRight, History,
-    Settings, Trash2, ShieldCheck, Heart, Star
+    Settings, Trash2, ShieldCheck, Heart, Star, LogOut
 } from 'lucide-react-native';
+import { supabase } from '../services/supabaseClient';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
@@ -111,6 +112,18 @@ export default function ProfileScreen({ navigation }: Props) {
             <TouchableOpacity style={styles.navRow} onPress={handleClearHistory}>
                 <Trash2 color={Colors.danger} size={20} />
                 <Text style={[styles.navLabel, { color: Colors.danger }]}>Clear Scan History</Text>
+            </TouchableOpacity>
+
+            {/* Logout */}
+            <TouchableOpacity
+                style={styles.navRow}
+                onPress={async () => {
+                    const { error } = await supabase.auth.signOut();
+                    if (error) Alert.alert('Error', error.message);
+                }}
+            >
+                <LogOut color={Colors.textSecondary} size={20} />
+                <Text style={styles.navLabel}>Log Out</Text>
             </TouchableOpacity>
 
             {/* About */}

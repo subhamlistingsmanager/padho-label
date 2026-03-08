@@ -140,9 +140,10 @@ export const mergeNutrition = (
     existing: NutritionData,
     ocr: Partial<NutritionData>
 ): NutritionData => {
-    const merged: NutritionData = { ...existing };
+    const merged: NutritionData = { ...(existing || {}) };
+    if (!ocr) return merged;
     (Object.keys(ocr) as (keyof NutritionData)[]).forEach(key => {
-        if (existing[key] == null && ocr[key] != null) {
+        if ((!existing || existing[key] == null) && ocr[key] != null) {
             (merged as any)[key] = ocr[key];
         }
     });

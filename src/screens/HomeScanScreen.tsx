@@ -13,7 +13,7 @@ import {
 import { Colors, Spacing, Radius, Shadow, Typography } from '../theme';
 import { getHistory } from '../services/history';
 import { calculateNutriScore } from '../services/ratingEngine';
-import { getTopBySubCategory, GRADE_COLOR, LeaderboardEntry } from '../data/leaderboardData';
+import { getTopBySubCategory, GRADE_COLOR, LeaderboardEntry, LEADERBOARD_DATA } from '../data/leaderboardData';
 import { getFavorites, toggleFavorite } from '../services/favorites';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -217,85 +217,87 @@ export default function HomeScanScreen({ navigation }: Props) {
         </View>
     );
 
-    return (
-        <FlatList
-            style={styles.container}
-            data={recentScans}
-            keyExtractor={item => item.barcode}
-            contentContainerStyle={{ paddingBottom: 40 }}
-            showsVerticalScrollIndicator={false}
-            ListHeaderComponent={() => (
+    const filteredSearch = searchQuery.trim().length > 0
+        ? LEADERBOARD_DATA.filter(item =>
+            item.name.toLowerCase().indexOf(searchQuery.toLowerCase()) !== -1 ||
+            item.brand.toLowerCase().indexOf(searchQuery.toLowerCase()) !== -1
+        ).slice(0, 20)
+        : [];
+
+    const renderHeader = useCallback(() => (
+        <>
+            {/* ── Hero ── */}
+            <View style={styles.hero}>
+                <View style={styles.brandRow}>
+                    <Salad color="#fff" size={20} />
+                    <Text style={styles.brandText}>Padho Label</Text>
+                </View>
+                <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+                    <Text style={styles.heroGreeting}>{getGreeting()}</Text>
+                    <Text style={styles.heroTitle}>Know What You Use</Text>
+                    <Text style={styles.heroTagline}>Scan any product for an instant health report.</Text>
+                </Animated.View>
+
+                {/* Stats Bar */}
+                <View style={styles.statsBar}>
+                    <TouchableOpacity style={styles.statItem} onPress={() => navigation.navigate('Challenges')}>
+                        <Flame color="#FF6B35" size={16} fill={streak > 0 ? "#FF6B35" : "transparent"} />
+                        <Text style={styles.statLabel}>{streak} Day Streak</Text>
+                    </TouchableOpacity>
+                    <View style={styles.statDivider} />
+                    <TouchableOpacity style={styles.statItem} onPress={() => navigation.navigate('Challenges')}>
+                        <Sparkles color="#FFD700" size={16} />
+                        <Text style={styles.statLabel}>{points} Points</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Scan CTA */}
+                <Animated.View style={[styles.scanHeroCTA, { opacity: fadeAnim }]}>
+                    <TouchableOpacity
+                        style={styles.scanHeroBtn}
+                        onPress={() => navigation.navigate('Scan')}
+                        activeOpacity={0.85}
+                    >
+                        <Camera color="#fff" size={26} />
+                        <Text style={styles.scanHeroBtnText}>Scan a Product</Text>
+                    </TouchableOpacity>
+                </Animated.View>
+            </View>
+
+            {/* Quick Shortcuts */}
+            <View style={styles.shortcutsRow}>
+                <TouchableOpacity style={styles.shortcutBtn} onPress={() => navigation.navigate('Pantry')}>
+                    <View style={[styles.shortcutIcon, { backgroundColor: '#E8F5E9' }]}><Package color={Colors.primary} size={22} /></View>
+                    <Text style={styles.shortcutText}>My Pantry</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.shortcutBtn} onPress={() => navigation.navigate('Chat')}>
+                    <View style={[styles.shortcutIcon, { backgroundColor: '#E3F2FD' }]}><Star color={Colors.info} size={22} /></View>
+                    <Text style={styles.shortcutText}>TIA Coach</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.shortcutBtn} onPress={() => navigation.navigate('Challenges')}>
+                    <View style={[styles.shortcutIcon, { backgroundColor: '#FFF3E0' }]}><Award color={Colors.warning} size={22} /></View>
+                    <Text style={styles.shortcutText}>Challenges</Text>
+                </TouchableOpacity>
+            </View>
+
+            {/* ── Search Bar ── */}
+            <View style={styles.searchRow}>
+                <View style={styles.searchBox}>
+                    <Search color={Colors.textMuted} size={18} />
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search products…"
+                        placeholderTextColor={Colors.textMuted}
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        onSubmitEditing={() => navigation.navigate('Scan')}
+                        returnKeyType="search"
+                    />
+                </View>
+            </View>
+
+            {searchQuery.trim().length === 0 && (
                 <>
-                    {/* ── Hero ── */}
-                    <View style={styles.hero}>
-                        <View style={styles.brandRow}>
-                            <Salad color="#fff" size={20} />
-                            <Text style={styles.brandText}>Padho Label</Text>
-                        </View>
-                        <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-                            <Text style={styles.heroGreeting}>{getGreeting()}</Text>
-                            <Text style={styles.heroTitle}>Know What You Use</Text>
-                            <Text style={styles.heroTagline}>Scan any product for an instant health report.</Text>
-                        </Animated.View>
-
-                        {/* Stats Bar */}
-                        <View style={styles.statsBar}>
-                            <TouchableOpacity style={styles.statItem} onPress={() => navigation.navigate('Challenges')}>
-                                <Flame color="#FF6B35" size={16} fill={streak > 0 ? "#FF6B35" : "transparent"} />
-                                <Text style={styles.statLabel}>{streak} Day Streak</Text>
-                            </TouchableOpacity>
-                            <View style={styles.statDivider} />
-                            <TouchableOpacity style={styles.statItem} onPress={() => navigation.navigate('Challenges')}>
-                                <Sparkles color="#FFD700" size={16} />
-                                <Text style={styles.statLabel}>{points} Points</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* Scan CTA */}
-                        <Animated.View style={[styles.scanHeroCTA, { opacity: fadeAnim }]}>
-                            <TouchableOpacity
-                                style={styles.scanHeroBtn}
-                                onPress={() => navigation.navigate('Scan')}
-                                activeOpacity={0.85}
-                            >
-                                <Camera color="#fff" size={26} />
-                                <Text style={styles.scanHeroBtnText}>Scan a Product</Text>
-                            </TouchableOpacity>
-                        </Animated.View>
-                    </View>
-
-                    {/* Quick Shortcuts */}
-                    <View style={styles.shortcutsRow}>
-                        <TouchableOpacity style={styles.shortcutBtn} onPress={() => navigation.navigate('Pantry')}>
-                            <View style={[styles.shortcutIcon, { backgroundColor: '#E8F5E9' }]}><Package color={Colors.primary} size={22} /></View>
-                            <Text style={styles.shortcutText}>My Pantry</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.shortcutBtn} onPress={() => navigation.navigate('Chat')}>
-                            <View style={[styles.shortcutIcon, { backgroundColor: '#E3F2FD' }]}><Star color={Colors.info} size={22} /></View>
-                            <Text style={styles.shortcutText}>TIA Coach</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.shortcutBtn} onPress={() => navigation.navigate('Challenges')}>
-                            <View style={[styles.shortcutIcon, { backgroundColor: '#FFF3E0' }]}><Award color={Colors.warning} size={22} /></View>
-                            <Text style={styles.shortcutText}>Challenges</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* ── Search Bar ── */}
-                    <View style={styles.searchRow}>
-                        <View style={styles.searchBox}>
-                            <Search color={Colors.textMuted} size={18} />
-                            <TextInput
-                                style={styles.searchInput}
-                                placeholder="Search products…"
-                                placeholderTextColor={Colors.textMuted}
-                                value={searchQuery}
-                                onChangeText={setSearchQuery}
-                                onSubmitEditing={() => navigation.navigate('Scan')}
-                                returnKeyType="search"
-                            />
-                        </View>
-                    </View>
-
                     {/* ── Daily Tip ── */}
                     <View style={styles.tipCard}>
                         <Lightbulb color={Colors.primary} size={16} />
@@ -339,12 +341,31 @@ export default function HomeScanScreen({ navigation }: Props) {
                     )}
                 </>
             )}
-            renderItem={({ item }) => {
-                const rating = calculateNutriScore(item.nutrition);
+
+            {searchQuery.trim().length > 0 && (
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Search Results ({filteredSearch.length})</Text>
+                </View>
+            )}
+        </>
+    ), [fadeAnim, slideAnim, userName, points, streak, tipIndex, searchQuery, recentScans, topFood, topBeauty, favBarcodes, getGreeting, navigation, renderCategorySection]);
+
+    return (
+        <FlatList
+            style={styles.container}
+            data={searchQuery.trim().length > 0 ? filteredSearch : recentScans}
+            keyExtractor={item => item.barcode}
+            contentContainerStyle={{ paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
+            ListHeaderComponent={renderHeader}
+            renderItem={({ item }: { item: any }) => {
+                const rating = item.grade ? { grade: item.grade, score: item.score, color: GRADE_COLOR[item.grade] } : calculateNutriScore(item.nutrition);
                 return (
                     <TouchableOpacity
                         style={styles.recentItem}
-                        onPress={() => navigation.navigate('Result', { product: item })}
+                        onPress={() => navigation.navigate('Result', {
+                            product: item.nutrition ? item : { ...item, nutrition: {} }
+                        })}
                         activeOpacity={0.8}
                     >
                         {item.image_url ? (
@@ -361,7 +382,7 @@ export default function HomeScanScreen({ navigation }: Props) {
                         <View style={[styles.gradeDot, { backgroundColor: rating.color }]}>
                             <Text style={styles.gradeDotText}>{rating.grade || '?'}</Text>
                         </View>
-                    </TouchableOpacity>
+                    </TouchableOpacity >
                 );
             }}
         />

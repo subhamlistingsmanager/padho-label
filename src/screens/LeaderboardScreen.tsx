@@ -39,12 +39,15 @@ export default function LeaderboardScreen({ route, navigation }: Props) {
     }, []);
 
     const handleToggleFav = useCallback(async (item: LeaderboardEntry) => {
-        const anim = favAnimMap[item.barcode] || new Animated.Value(1);
-        if (!favAnimMap[item.barcode]) {
-            setFavAnimMap(prev => ({ ...prev, [item.barcode]: anim }));
+        // Ensure we have an animation value for this item
+        let anim = favAnimMap[item.barcode];
+        if (!anim) {
+            anim = new Animated.Value(1);
+            setFavAnimMap(prev => ({ ...prev, [item.barcode]: anim! }));
         }
+
         Animated.sequence([
-            Animated.spring(anim, { toValue: 1.4, useNativeDriver: true, speed: 30 }),
+            Animated.spring(anim, { toValue: 1.4, useNativeDriver: true, speed: 30, bounciness: 10 }),
             Animated.spring(anim, { toValue: 1, useNativeDriver: true, speed: 30 }),
         ]).start();
 
@@ -114,8 +117,8 @@ export default function LeaderboardScreen({ route, navigation }: Props) {
         );
     };
 
-    return (
-        <View style={styles.wrapper}>
+    const renderHeader = useCallback(() => (
+        <>
             {/* Header */}
             <View style={[styles.header, { backgroundColor: themeColor }]}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -149,6 +152,7 @@ export default function LeaderboardScreen({ route, navigation }: Props) {
                 data={subCategories}
                 keyExtractor={s => s}
                 contentContainerStyle={styles.subPills}
+                style={{ marginBottom: Spacing.sm }}
                 renderItem={({ item: sub }) => (
                     <TouchableOpacity
                         style={[styles.pill, activeSub === sub && { backgroundColor: themeColor }]}
@@ -158,13 +162,18 @@ export default function LeaderboardScreen({ route, navigation }: Props) {
                     </TouchableOpacity>
                 )}
             />
+        </>
+    ), [themeColor, activeCategory, subCategories, activeSub]);
 
+    return (
+        <View style={styles.wrapper}>
             {/* Ranked list */}
             <FlatList
                 data={items}
                 keyExtractor={i => i.barcode}
                 renderItem={renderItem}
-                contentContainerStyle={{ padding: Spacing.md, paddingBottom: 100 }}
+                ListHeaderComponent={renderHeader}
+                contentContainerStyle={{ paddingBottom: 100 }}
                 ListEmptyComponent={
                     <View style={styles.empty}>
                         <Star color={Colors.textMuted} size={48} />

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Padho Label",
     "slug": "padho-label-v1-casubham",
-    "version": "2.0.0",
+    "version": "3.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -16,7 +16,7 @@
       "supportsTablet": true
     },
     "android": {
-      "versionCode": 16,
+      "versionCode": 19,
       "package": "com.padholabel.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
