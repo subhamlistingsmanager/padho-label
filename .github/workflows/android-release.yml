@@ -42,20 +42,17 @@ jobs:
         run: npm install -g eas-cli
 
       # ── Build & Submit via Local Runner ──────────────────────────────────
-      - name: Build & Submit Android production AAB
+      - name: Build Android production AAB (Local)
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          ANDROID_SERVICE_ACCOUNT_JSON: ${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
           EXPO_PUBLIC_GEMINI_API_KEY: ${{ secrets.EXPO_PUBLIC_GEMINI_API_KEY }}
         run: |
-          echo "$ANDROID_SERVICE_ACCOUNT_JSON" > pc-api-key.json
           eas build \
             --platform android \
             --profile production \
             --local \
-            --auto-submit \
             --non-interactive
 
       # ── Upload Artifact ──────────────────────────────────────────────────
@@ -65,3 +62,16 @@ jobs:
           name: android-release-aab
           path: ./*.aab
           if-no-files-found: error
+
+      # ── Submit to Play Store ─────────────────────────────────────────────
+      - name: Submit to Google Play Store
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          ANDROID_SERVICE_ACCOUNT_JSON: ${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}
+        run: |
+          echo "$ANDROID_SERVICE_ACCOUNT_JSON" > pc-api-key.json
+          eas submit \
+            --platform android \
+            --profile production \
+            --path ./*.aab \
+            --non-interactive
