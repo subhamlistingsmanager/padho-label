@@ -98,9 +98,11 @@ export default function ChatScreen({ route, navigation }: Props) {
                 {loading && (
                     <View style={styles.rowBot}>
                         <View style={[styles.avatar, { backgroundColor: primaryColor }]}><Sparkles color="#fff" size={14} /></View>
-                        <View style={styles.typingDots}>
-                            <Text style={styles.typingText}>TIA is thinking…</Text>
-                        </View>
+                        {product && (
+                            <View style={styles.productBadge}>
+                                <Text style={styles.productBadgeText}>Analysing: {product.name}</Text>
+                            </View>
+                        )}
                     </View>
                 )}
 
