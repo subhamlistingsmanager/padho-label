@@ -14,7 +14,7 @@ import { UserProfile, HealthConstraints } from '../types';
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
 
 export default function ChatScreen({ route, navigation }: Props) {
-    const { product } = route.params;
+    const { product } = route.params || {};
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [constraints, setConstraints] = useState<HealthConstraints | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -26,12 +26,12 @@ export default function ChatScreen({ route, navigation }: Props) {
         getUserProfile().then(p => {
             setProfile(p);
             const greeting = p
-                ? `Hi ${p.name}! 👋 I'm TIA, your Padho Label nutrition coach. I've analysed **${product.name}** for you. Ask me anything about ingredients, health impact, or whether it suits your goals!`
-                : `Hi! 👋 I'm TIA, your Padho Label nutrition coach. I've analysed **${product.name}**. What would you like to know?`;
+                ? `Hi ${p.name}! 👋 I'm TIA, your Padho Label nutrition coach. ${product ? `I've analysed **${product.name}** for you.` : "I'm here to help you with your nutrition goals."} Ask me anything!`
+                : `Hi! 👋 I'm TIA, your Padho Label nutrition coach. ${product ? `I've analysed **${product.name}**.` : "How can I help you today?"}`;
             setMessages([{ role: 'model', text: greeting }]);
         });
         getHealthConstraints().then(setConstraints);
-    }, [product.name]);
+    }, [product?.name]);
 
     const handleSend = useCallback(async () => {
         if (!input.trim() || loading) return;
@@ -40,7 +40,7 @@ export default function ChatScreen({ route, navigation }: Props) {
         const newMessages: ChatMessage[] = [...messages, { role: 'user', text: userText }];
         setMessages(newMessages);
         setLoading(true);
-        const response = await sendMessageToAI(userText, product, newMessages.slice(1), profile, constraints);
+        const response = await sendMessageToAI(userText, product as any, newMessages.slice(1), profile as any, constraints as any);
         setMessages(prev => [...prev, { role: 'model', text: response }]);
         setLoading(false);
     }, [input, loading, messages, product, profile, constraints]);
@@ -49,7 +49,7 @@ export default function ChatScreen({ route, navigation }: Props) {
         setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     }, [messages]);
 
-    const isBeauty = product.category === 'beauty';
+    const isBeauty = product?.category === 'beauty';
     const primaryColor = isBeauty ? '#E91E63' : Colors.primary;
 
     const suggestedQuestions = [

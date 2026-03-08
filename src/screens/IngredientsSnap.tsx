@@ -23,13 +23,16 @@ const FIELD_LABELS: Record<keyof NutritionData, string> = {
     energy_100g: 'Energy (kJ)',
     carbohydrates_100g: 'Carbohydrates (g)',
     sugars_100g: 'Sugar (g)',
+    added_sugars_100g: 'Added Sugar (g)',
     fat_100g: 'Fat (g)',
     saturated_fat_100g: 'Saturated Fat (g)',
+    trans_fat_100g: 'Trans Fat (g)',
     fiber_100g: 'Fibre (g)',
     proteins_100g: 'Protein (g)',
     salt_100g: 'Salt (g)',
     sodium_100g: 'Sodium (g)',
     cholesterol_mg_100g: 'Cholesterol (mg)',
+    serving_size_g: 'Serving Size (g)',
 };
 
 export default function IngredientsSnap({ route, navigation }: Props) {
@@ -51,9 +54,7 @@ export default function IngredientsSnap({ route, navigation }: Props) {
         try {
             setStatusMsg('Capturing image…');
             // react-native-vision-camera V4 — takePhoto returns { path }
-            const photo = await cameraRef.current.takePhoto({
-                qualityPrioritization: 'balanced',
-            });
+            const photo = await cameraRef.current.takePhoto();
             // On Android the path is absolute; iOS may need 'file://' prefix
             const uri = photo.path.startsWith('file://') ? photo.path : `file://${photo.path}`;
             setImageUri(uri);

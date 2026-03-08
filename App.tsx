@@ -35,7 +35,7 @@ const Tab = createBottomTabNavigator();
 function MainTabs() {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
+      screenOptions={({ route }: { route: { name: string } }) => ({
         headerShown: false,
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textMuted,
@@ -52,7 +52,7 @@ function MainTabs() {
           fontWeight: '700',
           marginTop: 2,
         },
-        tabBarIcon: ({ color, size }) => {
+        tabBarIcon: ({ color, size }: { color: string; size: number }) => {
           if (route.name === 'Home') return <Home color={color} size={22} />;
           if (route.name === 'Discover') return <Search color={color} size={22} />;
           if (route.name === 'Scan') return <Camera color={color} size={22} />;
@@ -65,8 +65,7 @@ function MainTabs() {
       <Tab.Screen name="Home" component={HomeScanScreen} options={{ tabBarLabel: 'Home' }} />
       <Tab.Screen name="Discover" component={LeaderboardScreen} options={{ tabBarLabel: 'Discover' }} />
       <Tab.Screen name="Scan" component={ScanScreen} options={{
-        tabBarLabel: 'Scan',
-        tabBarIcon: ({ color }) => (
+        tabBarIcon: ({ color }: { color: string }) => (
           <View style={{
             backgroundColor: Colors.primary,
             width: 52, height: 52, borderRadius: 26,
@@ -104,12 +103,12 @@ export default function App() {
     });
 
     // 2. Initial Session Check
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
       setSession(session);
     });
 
     // 3. Listen for changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: string, session: Session | null) => {
       setSession(session);
     });
 

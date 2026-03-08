@@ -197,7 +197,7 @@ export type RootStackParamList = {
     History: undefined;
     Settings: undefined;
     IngredientsSnap: { product: Product };
-    Chat: { product: Product };
+    Chat: { product?: Product };
     Leaderboard: { category?: 'food' | 'beauty'; subCategory?: string } | undefined;
     Pantry: undefined;
     Challenges: undefined;

@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, Image, TouchableOpacity,
-    Share, Dimensions, Modal,
+    Share, Dimensions, Modal, Animated,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
@@ -380,7 +380,6 @@ export default function ResultScreen({ route, navigation }: Props) {
                             <Text style={[styles.tabText, activeTab === tab && { color: primaryColor, fontWeight: '800' }]}>{tab}</Text>
                             {activeTab === tab && (
                                 <Animated.View
-                                    layout={/* Note: In RN standard Animated this is manual, but for simplicity we use a conditional view with shared style */ undefined}
                                     style={[styles.tabIndicator, { backgroundColor: primaryColor }]}
                                 />
                             )}
