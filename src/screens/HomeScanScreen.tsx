@@ -4,7 +4,9 @@ import {
     TextInput, FlatList, Image, Animated, ScrollView, Pressable,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList, Product } from '../types';
+import { CompositeScreenProps } from '@react-navigation/native';
+import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { RootStackParamList, TabParamList, Product } from '../types';
 import {
     Camera, Search, ChevronRight, Lightbulb, Heart, Award,
     Apple, Sparkles, ShoppingBag, Salad, Coffee, Leaf, Star,
@@ -16,7 +18,10 @@ import { calculateNutriScore } from '../services/ratingEngine';
 import { getTopBySubCategory, GRADE_COLOR, LeaderboardEntry, LEADERBOARD_DATA } from '../data/leaderboardData';
 import { getFavorites, toggleFavorite } from '../services/favorites';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+type Props = CompositeScreenProps<
+    BottomTabScreenProps<TabParamList, 'Home'>,
+    NativeStackScreenProps<RootStackParamList>
+>;
 
 const BEAUTY_COLOR = '#E91E63';
 
@@ -270,7 +275,7 @@ export default function HomeScanScreen({ navigation }: Props) {
                     <View style={[styles.shortcutIcon, { backgroundColor: '#E8F5E9' }]}><Package color={Colors.primary} size={22} /></View>
                     <Text style={styles.shortcutText}>My Pantry</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.shortcutBtn} onPress={() => navigation.navigate('Chat')}>
+                <TouchableOpacity style={styles.shortcutBtn} onPress={() => navigation.navigate('Chat', {})}>
                     <View style={[styles.shortcutIcon, { backgroundColor: '#E3F2FD' }]}><Star color={Colors.info} size={22} /></View>
                     <Text style={styles.shortcutText}>TIA Coach</Text>
                 </TouchableOpacity>

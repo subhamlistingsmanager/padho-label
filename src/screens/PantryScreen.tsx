@@ -4,12 +4,17 @@ import {
     FlatList, Image, Animated,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList, PantryItem } from '../types';
+import { CompositeScreenProps } from '@react-navigation/native';
+import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { RootStackParamList, TabParamList, PantryItem } from '../types';
 import { getPantryItems, computePantryScore, getPantryGrade, getGradeColor, getSwapCandidates, removeFromPantry } from '../services/pantryService';
 import { Colors, Spacing, Radius, Shadow } from '../theme';
 import { Package, TrendingUp, Trash2, Camera, BarChart2 } from 'lucide-react-native';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Pantry'>;
+type Props = CompositeScreenProps<
+    BottomTabScreenProps<TabParamList, 'Pantry'>,
+    NativeStackScreenProps<RootStackParamList>
+>;
 
 export default function PantryScreen({ navigation }: Props) {
     const [items, setItems] = useState<PantryItem[]>([]);

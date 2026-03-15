@@ -8,7 +8,9 @@ import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList, UserProfile } from '../types';
+import { CompositeScreenProps } from '@react-navigation/native';
+import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { RootStackParamList, TabParamList, UserProfile } from '../types';
 import { getUserProfile } from '../services/userProfileService';
 import { getTotalPoints, getStreak, getEarnedBadges, ALL_BADGES } from '../services/pointsService';
 import { getHistoryCount, clearHistory } from '../services/history';
@@ -19,7 +21,10 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../services/supabaseClient';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
+type Props = CompositeScreenProps<
+    BottomTabScreenProps<TabParamList, 'Profile'>,
+    NativeStackScreenProps<RootStackParamList>
+>;
 
 export default function ProfileScreen({ navigation }: Props) {
     const [profile, setProfile] = useState<UserProfile | null>(null);
