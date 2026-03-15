@@ -71,7 +71,7 @@ export default function ChatScreen({ route, navigation }: Props) {
                 </View>
                 <View style={{ flex: 1 }}>
                     <Text style={styles.headerName}>TIA – Nutrition Coach</Text>
-                    <Text style={styles.headerSub}>Analysing: {product.name}</Text>
+                    <Text style={styles.headerSub}>Analysing: {product?.name}</Text>
                 </View>
             </View>
 
@@ -173,4 +173,6 @@ const styles = StyleSheet.create({
     inputBar: { flexDirection: 'row', alignItems: 'flex-end', padding: Spacing.md, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: Colors.border, gap: 10 },
     inputField: { flex: 1, backgroundColor: Colors.background, borderRadius: Radius.lg, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: Colors.textPrimary, maxHeight: 100 },
     sendBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+    productBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: '#fff', ...Shadow.sm },
+    productBadgeText: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary },
 });

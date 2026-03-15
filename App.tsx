@@ -19,7 +19,7 @@ import PantryScreen from './src/screens/PantryScreen';
 import ChallengesScreen from './src/screens/ChallengesScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 
-import { RootStackParamList } from './src/types';
+import { RootStackParamList, TabParamList } from './src/types';
 import { Colors } from './src/theme';
 import { isOnboardingDone } from './src/services/userProfileService';
 
@@ -28,7 +28,7 @@ import { supabase } from './src/services/supabaseClient';
 import { Session } from '@supabase/supabase-js';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
-const Tab = createBottomTabNavigator();
+const Tab = createBottomTabNavigator<TabParamList>();
 
 // ─── Bottom Tab Navigator ──────────────────────────────────────────────────
 
@@ -63,7 +63,7 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="Home" component={HomeScanScreen} options={{ tabBarLabel: 'Home' }} />
-      <Tab.Screen name="Discover" component={LeaderboardScreen} options={{ tabBarLabel: 'Discover' }} />
+      <Tab.Screen name="Leaderboard" component={LeaderboardScreen} options={{ tabBarLabel: 'Discover' }} />
       <Tab.Screen name="Scan" component={ScanScreen} options={{
         tabBarIcon: ({ color }: { color: string }) => (
           <View style={{
@@ -134,7 +134,6 @@ export default function App() {
             <Stack.Screen name="Result" component={ResultScreen} />
             <Stack.Screen name="Chat" component={ChatScreen} />
             <Stack.Screen name="IngredientsSnap" component={IngredientsSnap} options={{ animation: 'slide_from_bottom' }} />
-            <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
             <Stack.Screen name="History" component={HistoryScreen} options={{ headerShown: true, title: 'Scan History', headerStyle: { backgroundColor: '#fff' }, headerTintColor: Colors.textPrimary }} />
             <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: true, title: 'Settings', headerStyle: { backgroundColor: '#fff' }, headerTintColor: Colors.textPrimary }} />
             <Stack.Screen name="Challenges" component={ChallengesScreen} />

@@ -4,7 +4,9 @@ import {
     TouchableOpacity, Animated,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../types';
+import { CompositeScreenProps } from '@react-navigation/native';
+import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { RootStackParamList, TabParamList } from '../types';
 import { Heart, ArrowLeft, Award, Star } from 'lucide-react-native';
 import { Colors, Spacing, Radius, Shadow, Typography } from '../theme';
 import {
@@ -13,7 +15,10 @@ import {
 } from '../data/leaderboardData';
 import { toggleFavorite, getFavorites } from '../services/favorites';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Leaderboard'>;
+type Props = CompositeScreenProps<
+    BottomTabScreenProps<TabParamList, 'Leaderboard'>,
+    NativeStackScreenProps<RootStackParamList>
+>;
 
 const BEAUTY_COLOR = '#E91E63';
 const FOOD_COLOR = Colors.primary;

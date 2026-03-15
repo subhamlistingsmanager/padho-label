@@ -10,13 +10,18 @@ import {
     useCodeScanner,
 } from 'react-native-vision-camera';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../types';
+import { CompositeScreenProps } from '@react-navigation/native';
+import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { RootStackParamList, TabParamList } from '../types';
 import { getProductByBarcode } from '../services/api';
 import { saveToHistory } from '../services/history';
 import { XCircle, RefreshCw } from 'lucide-react-native';
 import { Colors, Spacing, Radius } from '../theme';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Scan'>;
+type Props = CompositeScreenProps<
+    BottomTabScreenProps<TabParamList, 'Scan'>,
+    NativeStackScreenProps<RootStackParamList>
+>;
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = [0, 1000, 2500];

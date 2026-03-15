@@ -203,3 +203,11 @@ export type RootStackParamList = {
     Challenges: undefined;
     Profile: undefined;
 };
+
+export type TabParamList = {
+    Home: undefined;
+    Leaderboard: { category?: 'food' | 'beauty'; subCategory?: string } | undefined;
+    Scan: undefined;
+    Pantry: undefined;
+    Profile: undefined;
+};
