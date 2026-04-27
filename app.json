@@ -16,7 +16,7 @@
       "supportsTablet": true
     },
     "android": {
-      "versionCode": 20,
+      "versionCode": 21,
       "package": "com.padholabel.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
