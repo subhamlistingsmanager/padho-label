@@ -24,7 +24,7 @@
             "android": {
                 "serviceAccountKeyPath": "./pc-api-key.json",
                 "track": "internal",
-                "releaseStatus": "draft",
+                "releaseStatus": "completed",
                 "changesNotSentForReview": false
             }
         }
